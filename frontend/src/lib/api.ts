@@ -1,4 +1,4 @@
-import axios from "axios";
+﻿import axios from "axios";
 
 export const api = axios.create({
   baseURL: `${process.env.NEXT_PUBLIC_API_URL}/api/v1`,
@@ -51,17 +51,24 @@ export const meetingsApi = {
 export const projectsApi = {
   list: () => api.get<Project[]>("/projects/"),
   create: (data: { name: string; description?: string }) => api.post<Project>("/projects/", data),
+  update: (id: string, data: { name: string; description?: string }) => api.put<Project>(`/projects/${id}`, data),
+  delete: (id: string) => api.delete(`/projects/${id}`),
 };
 
 export const companiesApi = {
   list: () => api.get<Company[]>("/companies/"),
   create: (data: { name: string; sector?: string }) => api.post<Company>("/companies/", data),
+  update: (id: string, data: { name: string; sector?: string }) => api.put<Company>(`/companies/${id}`, data),
+  delete: (id: string) => api.delete(`/companies/${id}`),
 };
 
 export const personsApi = {
   list: () => api.get<Person[]>("/persons/"),
   create: (data: { name: string; role?: string; email?: string; company_id?: string }) =>
     api.post<Person>("/persons/", data),
+  update: (id: string, data: { name: string; role?: string; email?: string; company_id?: string }) =>
+    api.put<Person>(`/persons/${id}`, data),
+  delete: (id: string) => api.delete(`/persons/${id}`),
 };
 
 export const tagsApi = {
