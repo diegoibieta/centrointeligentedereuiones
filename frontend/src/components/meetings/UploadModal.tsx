@@ -56,7 +56,7 @@ export function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuc
       onClose();
     } catch (e: unknown) {
       const err = e as { response?: { data?: { detail?: string } } };
-      setError(err?.response?.data?.detail || "Error al cargar la reunión");
+      setError(err?.response?.data?.detail || "Error al cargar la reunion");
     }
   };
 
@@ -64,17 +64,17 @@ export function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuc
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b">
-          <h2 className="text-lg font-semibold">Nueva Reunión</h2>
+          <h2 className="text-lg font-semibold">Nueva Reunion</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Título *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Titulo *</label>
             <input
               {...register("title", { required: true })}
               className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-              placeholder="Ej: Reunión con Inversores Serie A"
+              placeholder="Ej: Reunion con Inversores Serie A"
             />
           </div>
 
@@ -86,10 +86,10 @@ export function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuc
                 {...register("date", { required: true })}
                 className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
-              <p className="mt-1 text-xs text-gray-400">Se detecta automáticamente al seleccionar el audio</p>
+              <p className="mt-1 text-xs text-gray-400">Se detecta automaticamente al seleccionar el archivo</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Módulo *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Modulo *</label>
               <select
                 {...register("module", { required: true })}
                 className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -98,7 +98,7 @@ export function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuc
                 <option value="investors">Inversionistas</option>
                 <option value="clients">Clientes</option>
                 <option value="suppliers">Proveedores</option>
-                <option value="internal">Reunión Interna</option>
+                <option value="internal">Reunion Interna</option>
               </select>
             </div>
           </div>
@@ -135,10 +135,10 @@ export function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuc
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Audio *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Archivo *</label>
             <input
               type="file"
-              accept=".mp3,.mp4,.wav,.m4a,.ogg,.webm,.flac,.aac"
+              accept=".mp3,.mp4,.wav,.m4a,.ogg,.webm,.flac,.aac,.txt,.pdf,.docx"
               {...register("audio", { required: true })}
               onChange={e => {
                 const file = e.target.files?.[0];
@@ -153,9 +153,9 @@ export function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuc
               className="w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-brand-100 file:text-brand-700 hover:file:bg-brand-200"
             />
             {fileDate && (
-              <p className="mt-1 text-xs text-brand-600">📅 Fecha detectada del archivo: <strong>{fileDate}</strong></p>
+              <p className="mt-1 text-xs text-brand-600">Fecha detectada del archivo: <strong>{fileDate}</strong></p>
             )}
-            <p className="mt-1 text-xs text-gray-400">MP3, MP4, WAV, M4A, OGG, WEBM, FLAC, AAC — máx. 500 MB</p>
+            <p className="mt-1 text-xs text-gray-400">Audio: MP3, MP4, WAV, M4A, OGG, WEBM, FLAC, AAC · Transcripcion: TXT, PDF, DOCX — max. 500 MB</p>
           </div>
 
           {error && <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">{error}</p>}
@@ -163,7 +163,7 @@ export function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuc
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Subiendo...</> : <><Upload className="w-4 h-4 mr-2" />Cargar Reunión</>}
+              {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Subiendo...</> : <><Upload className="w-4 h-4 mr-2" />Cargar Reunion</>}
             </Button>
           </div>
         </form>
