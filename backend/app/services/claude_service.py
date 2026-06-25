@@ -29,7 +29,6 @@ def translate_to_spanish(text: str, source_language: str) -> str:
 
 
 def _extract_json(text: str) -> str:
-    """Extract JSON from a response that may be wrapped in markdown code blocks."""
     text = text.strip()
     if "```" in text:
         parts = text.split("```")
@@ -37,7 +36,6 @@ def _extract_json(text: str) -> str:
             part = part.lstrip("json").strip()
             if part:
                 return part
-    # Try to find the first { ... } block
     start = text.find("{")
     end = text.rfind("}")
     if start != -1 and end != -1 and end > start:
@@ -46,39 +44,38 @@ def _extract_json(text: str) -> str:
 
 
 def analyze_meeting(transcript: str, title: str, module: str) -> dict:
-    """Returns dict with summary, agreements, tasks, risks, opportunities."""
-
-    # Limit transcript length to avoid exceeding token limits (~60k chars ≈ 15k tokens)
     max_transcript_chars = 60_000
     if len(transcript) > max_transcript_chars:
         transcript = transcript[:max_transcript_chars] + "\n\n[Transcripción truncada por longitud]"
 
-    prompt = f"""Eres un experto en análisis estratégico de reuniones de negocios.
+    prompt = f"""Eres un experto en análisis estratégico de reuniones de negocios. Sé muy conciso.
 
-Analiza la siguiente transcripción de una reunión del módulo "{module}" titulada "{title}".
+Analiza la transcripción de la reunión "{title}" (módulo: {module}).
 
 TRANSCRIPCIÓN:
 {transcript}
 
-Responde ÚNICAMENTE con un JSON válido con esta estructura exacta:
+Responde ÚNICAMENTE con JSON válido con esta estructura:
 {{
-  "summary": "Resumen ejecutivo de 3-5 párrafos con los puntos más importantes",
+  "summary": "Resumen ejecutivo en máximo 3 oraciones cortas con los puntos clave",
   "agreements": [
-    {{"description": "...", "responsible": "...", "deadline": "..."}}
+    {{"description": "acuerdo concreto en 1 oración", "responsible": "nombre o vacío", "deadline": "fecha o vacío"}}
   ],
   "tasks": [
-    {{"description": "...", "responsible": "...", "priority": "alta|media|baja", "deadline": "..."}}
+    {{"description": "tarea concreta en 1 oración", "responsible": "nombre o vacío", "priority": "alta|media|baja", "deadline": "fecha o vacío"}}
   ],
   "risks": [
-    {{"description": "...", "impact": "alto|medio|bajo", "probability": "alta|media|baja", "mitigation": "..."}}
+    {{"description": "riesgo concreto en 1 oración", "impact": "alto|medio|bajo", "probability": "alta|media|baja", "mitigation": "acción en 1 oración o vacío"}}
   ],
   "opportunities": [
-    {{"description": "...", "potential": "alto|medio|bajo", "action": "..."}}
+    {{"description": "oportunidad concreta en 1 oración", "potential": "alto|medio|bajo", "action": "acción en 1 oración o vacío"}}
   ]
 }}
 
-Si un campo no aplica o no hay información suficiente, devuelve una lista vacía [].
-Los campos "responsible" y "deadline" son opcionales, devuelve "" si no hay información."""
+Reglas:
+- Si no hay acuerdos, tareas, riesgos u oportunidades REALES en la conversación, devuelve lista vacía [].
+- No inventes información que no esté en la transcripción.
+- Cada ítem máximo 1 oración corta."""
 
     response = _client().messages.create(
         model=MODEL,
@@ -101,26 +98,10 @@ Los campos "responsible" y "deadline" son opcionales, devuelve "" si no hay info
 
 
 def generate_embedding(text: str) -> list[float]:
-    """Generate embedding using Claude's text for semantic search via voyage-3."""
-    # Use Anthropic's voyage embeddings via the API
-    client = _client()
-    # Truncate text to avoid token limits
-    text = text[:8000]
-
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=1,
-        messages=[{"role": "user", "content": "x"}],
-        system="",
-    )
-    # Since Anthropic doesn't expose embeddings directly, we use a semantic hash approach
-    # with the summary text and cosine similarity on TF-IDF vectors stored as JSON
-    # For production, integrate voyage-3 via anthropic.Anthropic client
     return []
 
 
 def semantic_search_query(query: str, transcripts: list[dict]) -> list[dict]:
-    """Use Claude to rank meetings by relevance to a query."""
     if not transcripts:
         return []
 
