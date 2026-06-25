@@ -1,4 +1,4 @@
-Ôªøimport json
+import json
 import anthropic
 from ..core.config import get_settings
 
@@ -19,9 +19,9 @@ def translate_to_spanish(text: str, source_language: str) -> str:
         messages=[{
             "role": "user",
             "content": (
-                f"Traduce el siguiente texto al espa√±ol. "
-                f"Mant√©n el formato y los p√°rrafos originales. "
-                f"Solo devuelve la traducci√≥n, sin comentarios adicionales.\n\n{text}"
+                f"Traduce el siguiente texto al espaÒol. "
+                f"MantÈn el formato y los p·rrafos originales. "
+                f"Solo devuelve la traducciÛn, sin comentarios adicionales.\n\n{text}"
             ),
         }],
     )
@@ -46,36 +46,36 @@ def _extract_json(text: str) -> str:
 def analyze_meeting(transcript: str, title: str, module: str) -> dict:
     max_transcript_chars = 60_000
     if len(transcript) > max_transcript_chars:
-        transcript = transcript[:max_transcript_chars] + "\n\n[Transcripci√≥n truncada por longitud]"
+        transcript = transcript[:max_transcript_chars] + "\n\n[TranscripciÛn truncada por longitud]"
 
-    prompt = f"""Eres un experto en an√°lisis estrat√©gico de reuniones de negocios. S√© muy conciso.
+    prompt = f"""Eres un experto en an·lisis estratÈgico de reuniones de negocios. SÈ muy conciso.
 
-Analiza la transcripci√≥n de la reuni√≥n "{title}" (m√≥dulo: {module}).
+Analiza la transcripciÛn de la reuniÛn "{title}" (mÛdulo: {module}).
 
-TRANSCRIPCI√ìN:
+TRANSCRIPCI”N:
 {transcript}
 
-Responde √öNICAMENTE con JSON v√°lido con esta estructura:
+Responde ⁄NICAMENTE con JSON v·lido con esta estructura:
 {{
-  "summary": "Resumen ejecutivo en m√°ximo 3 oraciones cortas con los puntos clave",
+  "summary": "Resumen ejecutivo de 2 p·rrafos cortos (aproximadamente 6 oraciones) con los puntos m·s importantes de la reuniÛn: contexto, decisiones clave, y prÛximos pasos",
   "agreements": [
-    {{"description": "acuerdo concreto en 1 oraci√≥n", "responsible": "nombre o vac√≠o", "deadline": "fecha o vac√≠o"}}
+    {{"description": "acuerdo concreto en 1 oraciÛn", "responsible": "nombre o vacÌo", "deadline": "fecha o vacÌo"}}
   ],
   "tasks": [
-    {{"description": "tarea concreta en 1 oraci√≥n", "responsible": "nombre o vac√≠o", "priority": "alta|media|baja", "deadline": "fecha o vac√≠o"}}
+    {{"description": "tarea concreta en 1 oraciÛn", "responsible": "nombre o vacÌo", "priority": "alta|media|baja", "deadline": "fecha o vacÌo"}}
   ],
   "risks": [
-    {{"description": "riesgo concreto en 1 oraci√≥n", "impact": "alto|medio|bajo", "probability": "alta|media|baja", "mitigation": "acci√≥n en 1 oraci√≥n o vac√≠o"}}
+    {{"description": "riesgo concreto en 1 oraciÛn", "impact": "alto|medio|bajo", "probability": "alta|media|baja", "mitigation": "acciÛn en 1 oraciÛn o vacÌo"}}
   ],
   "opportunities": [
-    {{"description": "oportunidad concreta en 1 oraci√≥n", "potential": "alto|medio|bajo", "action": "acci√≥n en 1 oraci√≥n o vac√≠o"}}
+    {{"description": "oportunidad concreta en 1 oraciÛn", "potential": "alto|medio|bajo", "action": "acciÛn en 1 oraciÛn o vacÌo"}}
   ]
 }}
 
 Reglas:
-- Si no hay acuerdos, tareas, riesgos u oportunidades REALES en la conversaci√≥n, devuelve lista vac√≠a [].
-- No inventes informaci√≥n que no est√© en la transcripci√≥n.
-- Cada √≠tem m√°ximo 1 oraci√≥n corta."""
+- Si no hay acuerdos, tareas, riesgos u oportunidades REALES en la conversaciÛn, devuelve lista vacÌa [].
+- No inventes informaciÛn que no estÈ en la transcripciÛn.
+- Cada Ìtem m·ximo 1 oraciÛn corta."""
 
     response = _client().messages.create(
         model=MODEL,
@@ -106,7 +106,7 @@ def semantic_search_query(query: str, transcripts: list[dict]) -> list[dict]:
         return []
 
     items = "\n".join(
-        f"ID:{t['id']} T√çTULO:{t['title']} RESUMEN:{(t.get('summary') or '')[:300]}"
+        f"ID:{t['id']} TÕTULO:{t['title']} RESUMEN:{(t.get('summary') or '')[:300]}"
         for t in transcripts[:20]
     )
 
@@ -116,10 +116,10 @@ def semantic_search_query(query: str, transcripts: list[dict]) -> list[dict]:
         messages=[{
             "role": "user",
             "content": (
-                f"Tienes esta consulta de b√∫squeda: \"{query}\"\n\n"
+                f"Tienes esta consulta de b˙squeda: \"{query}\"\n\n"
                 f"Y estas reuniones:\n{items}\n\n"
-                f"Devuelve SOLO un JSON con los IDs de las reuniones m√°s relevantes ordenadas por relevancia, "
-                f"m√°ximo 10 resultados. Formato: {{\"ids\": [\"id1\", \"id2\", ...]}}"
+                f"Devuelve SOLO un JSON con los IDs de las reuniones m·s relevantes ordenadas por relevancia, "
+                f"m·ximo 10 resultados. Formato: {{\"ids\": [\"id1\", \"id2\", ...]}}"
             ),
         }],
     )
