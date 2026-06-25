@@ -1,4 +1,4 @@
-﻿﻿"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { meetingsApi, Meeting } from "@/lib/api";
@@ -10,27 +10,15 @@ import {
 } from "@/lib/utils";
 import {
   ArrowLeft, Calendar, Clock, Building2, User, FolderKanban,
-  CheckSquare, AlertTriangle, Lightbulb, HandshakeIcon, FileText,
   RefreshCw, Trash2, Globe,
 } from "lucide-react";
-
-function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div className="bg-white rounded-xl border p-5">
-      <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-4">
-        {icon}
-        {title}
-      </h3>
-      {children}
-    </div>
-  );
-}
 
 export default function MeetingDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState("resumen");
 
   const load = () => {
     meetingsApi.get(id).then(r => {
@@ -59,6 +47,14 @@ export default function MeetingDetail() {
   if (!meeting) return <div className="p-8 text-center text-gray-400">Reunion no encontrada.</div>;
 
   const isProcessing = ["pending", "transcribing", "analyzing"].includes(meeting.status);
+
+  const tabs = meeting.status === "completed" ? [
+    { key: "resumen", label: "Resumen", show: !!meeting.summary },
+    { key: "acuerdos", label: "Acuerdos", show: (meeting.agreements?.length ?? 0) > 0 },
+    { key: "tareas", label: "Tareas", show: (meeting.tasks?.length ?? 0) > 0 },
+    { key: "riesgos", label: "Riesgos", show: (meeting.risks?.length ?? 0) > 0 },
+    { key: "oportunidades", label: "Oportunidades", show: (meeting.opportunities?.length ?? 0) > 0 },
+  ].filter(t => t.show) : [];
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -107,7 +103,7 @@ export default function MeetingDetail() {
         {meeting.person && (
           <div className="flex items-center gap-2 text-gray-600">
             <User className="w-4 h-4" />{meeting.person.name}
-            {meeting.person.role && <span className="text-gray-400">· {meeting.person.role}</span>}
+            {meeting.person.role && <span className="text-gray-400"> · {meeting.person.role}</span>}
           </div>
         )}
       </div>
@@ -125,7 +121,7 @@ export default function MeetingDetail() {
       {isProcessing && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-blue-700 text-sm flex items-center gap-2">
           <RefreshCw className="w-4 h-4 animate-spin" />
-          {meeting.status === "transcribing" ? "Transcribiendo audio con Faster-Whisper..." :
+          {meeting.status === "transcribing" ? "Transcribiendo audio..." :
            meeting.status === "analyzing" ? "Analizando con Claude..." :
            "En cola para procesamiento..."}
         </div>
@@ -138,60 +134,68 @@ export default function MeetingDetail() {
       )}
 
       {meeting.status === "completed" && (
-        <div className="space-y-4">
-          {meeting.summary && (
-            <Section title="Resumen Ejecutivo" icon={<FileText className="w-4 h-4 text-brand-600" />}>
+        <>
+          <div className="flex gap-1 mb-4 border-b overflow-x-auto">
+            {tabs.map(t => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors -mb-px ${tab === t.key ? "border-brand-600 text-brand-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div className="bg-white rounded-xl border p-5">
+            {tab === "resumen" && (
               <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{meeting.summary}</p>
-            </Section>
-          )}
-          {(meeting.agreements?.length ?? 0) > 0 && (
-            <Section title={Acuerdos} icon={<HandshakeIcon className="w-4 h-4 text-green-600" />}>
-              <ul className="space-y-2">
+            )}
+            {tab === "acuerdos" && (
+              <ul className="space-y-3">
                 {meeting.agreements!.map((a, i) => (
                   <li key={i} className="text-sm border-l-2 border-green-400 pl-3">
                     <p className="text-gray-800">{a.description}</p>
                     {(a.responsible || a.deadline) && (
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {a.responsible && Responsable: }{a.responsible}
+                        {a.responsible && `Responsable: ${a.responsible}`}
                         {a.responsible && a.deadline && " · "}
-                        {a.deadline && Fecha: }{a.deadline}
+                        {a.deadline && `Fecha: ${a.deadline}`}
                       </p>
                     )}
                   </li>
                 ))}
               </ul>
-            </Section>
-          )}
-          {(meeting.tasks?.length ?? 0) > 0 && (
-            <Section title={Tareas} icon={<CheckSquare className="w-4 h-4 text-blue-600" />}>
-              <ul className="space-y-2">
+            )}
+            {tab === "tareas" && (
+              <ul className="space-y-3">
                 {meeting.tasks!.map((t, i) => (
                   <li key={i} className="text-sm border-l-2 border-blue-400 pl-3">
                     <p className="text-gray-800">{t.description}</p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {t.responsible && Responsable: }{t.responsible}
-                      {t.deadline &&  · Fecha: }{t.deadline}
+                      {t.priority && <span className={`font-medium ${PRIORITY_COLORS[t.priority] || ""}`}>Prioridad: {t.priority}</span>}
+                      {t.responsible && ` · Responsable: ${t.responsible}`}
+                      {t.deadline && ` · Fecha: ${t.deadline}`}
                     </p>
                   </li>
                 ))}
               </ul>
-            </Section>
-          )}
-          {(meeting.risks?.length ?? 0) > 0 && (
-            <Section title={Riesgos} icon={<AlertTriangle className="w-4 h-4 text-red-500" />}>
-              <ul className="space-y-2">
+            )}
+            {tab === "riesgos" && (
+              <ul className="space-y-3">
                 {meeting.risks!.map((r, i) => (
                   <li key={i} className="text-sm border-l-2 border-red-400 pl-3">
                     <p className="text-gray-800">{r.description}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {r.impact && `Impacto: ${r.impact}`}
+                      {r.probability && ` · Probabilidad: ${r.probability}`}
+                    </p>
                     {r.mitigation && <p className="text-xs text-gray-500 mt-0.5">Mitigacion: {r.mitigation}</p>}
                   </li>
                 ))}
               </ul>
-            </Section>
-          )}
-          {(meeting.opportunities?.length ?? 0) > 0 && (
-            <Section title={Oportunidades} icon={<Lightbulb className="w-4 h-4 text-yellow-500" />}>
-              <ul className="space-y-2">
+            )}
+            {tab === "oportunidades" && (
+              <ul className="space-y-3">
                 {meeting.opportunities!.map((o, i) => (
                   <li key={i} className="text-sm border-l-2 border-yellow-400 pl-3">
                     <p className="text-gray-800">{o.description}</p>
@@ -199,9 +203,9 @@ export default function MeetingDetail() {
                   </li>
                 ))}
               </ul>
-            </Section>
-          )}
-        </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
