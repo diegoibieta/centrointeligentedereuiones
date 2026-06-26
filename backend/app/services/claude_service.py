@@ -1,4 +1,4 @@
-import json
+ï»¿import json
 import anthropic
 from ..core.config import get_settings
 
@@ -19,9 +19,9 @@ def translate_to_spanish(text: str, source_language: str) -> str:
         messages=[{
             "role": "user",
             "content": (
-                f"Traduce el siguiente texto al español. "
-                f"Mantén el formato y los párrafos originales. "
-                f"Solo devuelve la traducción, sin comentarios adicionales.\n\n{text}"
+                f"Traduce el siguiente texto al espanol. "
+                f"Manten el formato y los parrafos originales. "
+                f"Solo devuelve la traduccion, sin comentarios adicionales.\n\n{text}"
             ),
         }],
     )
@@ -46,36 +46,36 @@ def _extract_json(text: str) -> str:
 def analyze_meeting(transcript: str, title: str, module: str) -> dict:
     max_transcript_chars = 60_000
     if len(transcript) > max_transcript_chars:
-        transcript = transcript[:max_transcript_chars] + "\n\n[Transcripción truncada por longitud]"
+        transcript = transcript[:max_transcript_chars] + "\n\n[Transcripcion truncada por longitud]"
 
-    prompt = f"""Eres un experto en análisis estratégico de reuniones de negocios. Sé muy conciso.
+    prompt = f"""Eres un experto en analisis estrategico de reuniones de negocios.
 
-Analiza la transcripción de la reunión "{title}" (módulo: {module}).
+Analiza la transcripcion de la reunion "{title}" (modulo: {module}).
 
-TRANSCRIPCIÓN:
+TRANSCRIPCION:
 {transcript}
 
-Responde ÚNICAMENTE con JSON válido con esta estructura:
+Responde UNICAMENTE con JSON valido con esta estructura:
 {{
-  "summary": "Resumen ejecutivo de 2 párrafos cortos (aproximadamente 6 oraciones) con los puntos más importantes de la reunión: contexto, decisiones clave, y próximos pasos",
+  "summary": "Resumen ejecutivo de 2 parrafos cortos (aproximadamente 6 oraciones) con los puntos mas importantes de la reunion: contexto, decisiones clave, y proximos pasos",
   "agreements": [
-    {{"description": "acuerdo concreto en 1 oración", "responsible": "nombre o vacío", "deadline": "fecha o vacío"}}
+    {{"description": "acuerdo concreto en 1 oracion", "responsible": "nombre o vacio", "deadline": "fecha o vacio"}}
   ],
   "tasks": [
-    {{"description": "tarea concreta en 1 oración", "responsible": "nombre o vacío", "priority": "alta|media|baja", "deadline": "fecha o vacío"}}
+    {{"description": "tarea concreta en 1 oracion", "responsible": "nombre o vacio", "priority": "alta|media|baja", "deadline": "fecha o vacio"}}
   ],
   "risks": [
-    {{"description": "riesgo concreto en 1 oración", "impact": "alto|medio|bajo", "probability": "alta|media|baja", "mitigation": "acción en 1 oración o vacío"}}
+    {{"description": "riesgo concreto en 1 oracion", "impact": "alto|medio|bajo", "probability": "alta|media|baja", "mitigation": "accion en 1 oracion o vacio"}}
   ],
   "opportunities": [
-    {{"description": "oportunidad concreta en 1 oración", "potential": "alto|medio|bajo", "action": "acción en 1 oración o vacío"}}
+    {{"description": "oportunidad concreta en 1 oracion", "potential": "alto|medio|bajo", "action": "accion en 1 oracion o vacio"}}
   ]
 }}
 
 Reglas:
-- Si no hay acuerdos, tareas, riesgos u oportunidades REALES en la conversación, devuelve lista vacía [].
-- No inventes información que no esté en la transcripción.
-- Cada ítem máximo 1 oración corta."""
+- Si no hay acuerdos, tareas, riesgos u oportunidades REALES en la conversacion, devuelve lista vacia [].
+- No inventes informacion que no este en la transcripcion.
+- Cada item maximo 1 oracion corta."""
 
     response = _client().messages.create(
         model=MODEL,
@@ -97,6 +97,30 @@ Reglas:
         }
 
 
+def answer_question(question: str, context_blocks: list[str]) -> str:
+    if not context_blocks:
+        return "No encontre reuniones relevantes para responder esa pregunta."
+
+    context = "\n\n---\n\n".join(context_blocks)
+
+    response = _client().messages.create(
+        model=MODEL,
+        max_tokens=1024,
+        messages=[{
+            "role": "user",
+            "content": (
+                f"Eres un asistente de memoria organizacional. "
+                f"Responde la siguiente pregunta basandote UNICAMENTE en la informacion de las reuniones que se te proporcionan. "
+                f"Se conciso y cita de que reunion viene cada dato entre parentesis.\n\n"
+                f"PREGUNTA: {question}\n\n"
+                f"INFORMACION DE REUNIONES:\n{context}\n\n"
+                f"Si la informacion no es suficiente para responder, dilo claramente."
+            ),
+        }],
+    )
+    return response.content[0].text
+
+
 def generate_embedding(text: str) -> list[float]:
     return []
 
@@ -106,7 +130,7 @@ def semantic_search_query(query: str, transcripts: list[dict]) -> list[dict]:
         return []
 
     items = "\n".join(
-        f"ID:{t['id']} TÍTULO:{t['title']} RESUMEN:{(t.get('summary') or '')[:300]}"
+        f"ID:{t['id']} TITULO:{t['title']} RESUMEN:{(t.get('summary') or '')[:300]}"
         for t in transcripts[:20]
     )
 
@@ -116,10 +140,10 @@ def semantic_search_query(query: str, transcripts: list[dict]) -> list[dict]:
         messages=[{
             "role": "user",
             "content": (
-                f"Tienes esta consulta de búsqueda: \"{query}\"\n\n"
+                f"Tienes esta consulta de busqueda: \"{query}\"\n\n"
                 f"Y estas reuniones:\n{items}\n\n"
-                f"Devuelve SOLO un JSON con los IDs de las reuniones más relevantes ordenadas por relevancia, "
-                f"máximo 10 resultados. Formato: {{\"ids\": [\"id1\", \"id2\", ...]}}"
+                f"Devuelve SOLO un JSON con los IDs de las reuniones mas relevantes ordenadas por relevancia, "
+                f"maximo 10 resultados. Formato: {{\"ids\": [\"id1\", \"id2\", ...]}}"
             ),
         }],
     )
