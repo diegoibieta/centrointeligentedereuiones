@@ -9,9 +9,6 @@ interface FormData {
   title: string;
   date: string;
   module: string;
-  project_id: string;
-  company_id: string;
-  person_id: string;
   tag_ids: string[];
   audio: FileList;
 }
@@ -24,6 +21,10 @@ export function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuc
   const [tags, setTags] = useState<Tag[]>([]);
   const [error, setError] = useState("");
   const [fileDate, setFileDate] = useState<string>("");
+
+  const [companyId, setCompanyId] = useState("");
+  const [projectId, setProjectId] = useState("");
+  const [personId, setPersonId] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -39,6 +40,33 @@ export function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuc
     });
   }, []);
 
+  const filteredProjects = companyId
+    ? projects.filter(p => p.company_id === companyId)
+    : projects;
+
+  const filteredPersons = projectId
+    ? (projects.find(p => p.id === projectId)?.persons || []).map(x =>
+        persons.find(pe => pe.id === x.id)
+      ).filter(Boolean) as Person[]
+    : companyId
+    ? persons.filter(pe => pe.company_id === companyId)
+    : persons;
+
+  const handleCompanyChange = (id: string) => {
+    setCompanyId(id);
+    setProjectId("");
+    setPersonId("");
+  };
+
+  const handleProjectChange = (id: string) => {
+    setProjectId(id);
+    setPersonId("");
+    if (id) {
+      const proj = projects.find(p => p.id === id);
+      if (proj?.company_id && !companyId) setCompanyId(proj.company_id);
+    }
+  };
+
   const onSubmit = async (data: FormData) => {
     setError("");
     try {
@@ -46,9 +74,9 @@ export function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuc
       form.append("title", data.title);
       form.append("date", data.date);
       form.append("module", data.module);
-      if (data.project_id) form.append("project_id", data.project_id);
-      if (data.company_id) form.append("company_id", data.company_id);
-      if (data.person_id) form.append("person_id", data.person_id);
+      if (projectId) form.append("project_id", projectId);
+      if (companyId) form.append("company_id", companyId);
+      if (personId) form.append("person_id", personId);
       if (data.tag_ids) form.append("tag_ids", Array.from(data.tag_ids).join(","));
       form.append("audio", data.audio[0]);
       await meetingsApi.upload(form);
@@ -59,6 +87,8 @@ export function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuc
       setError(err?.response?.data?.detail || "Error al cargar la reunion");
     }
   };
+
+  const selectCls = "w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500";
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -73,7 +103,7 @@ export function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuc
             <label className="block text-sm font-medium text-gray-700 mb-1">Titulo *</label>
             <input
               {...register("title", { required: true })}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className={selectCls}
               placeholder="Ej: Reunion con Inversores Serie A"
             />
           </div>
@@ -84,16 +114,13 @@ export function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuc
               <input
                 type="datetime-local"
                 {...register("date", { required: true })}
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className={selectCls}
               />
-              <p className="mt-1 text-xs text-gray-400">Se detecta automaticamente al seleccionar el archivo</p>
+              <p className="mt-1 text-xs text-gray-400">Se detecta automaticamente al seleccionar el audio</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Modulo *</label>
-              <select
-                {...register("module", { required: true })}
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-              >
+              <select {...register("module", { required: true })} className={selectCls}>
                 <option value="">Seleccionar...</option>
                 <option value="investors">Inversionistas</option>
                 <option value="clients">Clientes</option>
@@ -103,33 +130,40 @@ export function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuc
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Proyecto</label>
-              <select {...register("project_id")} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                <option value="">Ninguno</option>
-                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </div>
+          <div className="space-y-3 bg-gray-50 rounded-xl p-3">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Contexto</p>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
-              <select {...register("company_id")} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                <option value="">Ninguna</option>
+              <select value={companyId} onChange={e => handleCompanyChange(e.target.value)} className={selectCls}>
+                <option value="">Sin empresa</option>
                 {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Persona</label>
-              <select {...register("person_id")} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                <option value="">Ninguna</option>
-                {persons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              <label className="block text-sm font-medium text-gray-700 mb-1">Proyecto</label>
+              <select value={projectId} onChange={e => handleProjectChange(e.target.value)} className={selectCls}>
+                <option value="">Sin proyecto</option>
+                {filteredProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
+              {companyId && filteredProjects.length === 0 && (
+                <p className="text-xs text-gray-400 mt-1">No hay proyectos para esta empresa</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Persona</label>
+              <select value={personId} onChange={e => setPersonId(e.target.value)} className={selectCls}>
+                <option value="">Sin persona</option>
+                {filteredPersons.map(p => <option key={p.id} value={p.id}>{p.name}{p.role ? ` — ${p.role}` : ""}</option>)}
+              </select>
+              {projectId && filteredPersons.length === 0 && (
+                <p className="text-xs text-gray-400 mt-1">No hay personas asignadas a este proyecto</p>
+              )}
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Etiquetas</label>
-            <select multiple {...register("tag_ids")} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 h-20">
+            <select multiple {...register("tag_ids")} className={`${selectCls} h-20`}>
               {tags.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </div>

@@ -70,7 +70,7 @@ export default function PersonsPage() {
     setEditRole(p.role || "");
     setEditEmail(p.email || "");
     setEditCompanyId(p.company_id || "");
-    setEditProjectIds(p.projects.map(x => x.id));
+    setEditProjectIds((p.projects || []).map(x => x.id));
   };
 
   const handleUpdate = async (id: string) => {
@@ -145,9 +145,9 @@ export default function PersonsPage() {
                     {p.email && <span>{p.email}</span>}
                     {p.company_id && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{companyName(p.company_id)}</span>}
                   </div>
-                  {p.projects.length > 0 && (
+                  {(p.projects || []).length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {p.projects.map(proj => (
+                      {(p.projects || []).map(proj => (
                         <span key={proj.id} className="flex items-center gap-1 px-2 py-0.5 bg-brand-50 text-brand-700 rounded-full text-xs">
                           <FolderKanban className="w-3 h-3" />{proj.name}
                         </span>

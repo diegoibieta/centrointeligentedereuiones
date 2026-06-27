@@ -16,10 +16,7 @@ const nav = [
   { href: "/meetings?module=clients", label: "Clientes", icon: Users },
   { href: "/meetings?module=suppliers", label: "Proveedores", icon: Truck },
   { href: "/meetings?module=internal", label: "Internas", icon: Building2 },
-  { href: "/projects", label: "Proyectos", icon: FolderKanban },
-  { href: "/companies", label: "Empresas", icon: Briefcase },
-  { href: "/persons", label: "Personas", icon: User },
-  { href: "/tags", label: "Etiquetas", icon: Tag },
+  { href: "/comunidades", label: "Comunidades", icon: FolderKanban },
 ];
 
 function TrendingUp(props: React.SVGProps<SVGSVGElement>) {
