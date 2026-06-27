@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { UploadModal } from "@/components/meetings/UploadModal";
 
-function TrendingUp(props) {
+function TrendingUp(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
@@ -31,12 +31,12 @@ const nav = [
   { href: "/comunidades", label: "Comunidades", icon: FolderKanban },
 ];
 
-function NavContent({ collapsed }) {
+function NavContent({ collapsed }: { collapsed: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentModule = searchParams.get("module");
 
-  const isActive = (href) => {
+  const isActive = (href: string) => {
     const [path, query] = href.split("?");
     if (path !== pathname) return false;
     if (!query) return path !== "/meetings" || !currentModule;
