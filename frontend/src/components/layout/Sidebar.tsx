@@ -1,5 +1,5 @@
 ﻿"use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { UploadModal } from "@/components/meetings/UploadModal";
 
-function TrendingUp(props: React.SVGProps<SVGSVGElement>) {
+function TrendingUp(props) {
   return (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
@@ -20,9 +20,9 @@ function TrendingUp(props: React.SVGProps<SVGSVGElement>) {
 }
 
 const nav = [
-  { href: "/search", label: "Búsqueda Semántica", icon: Search },
+  { href: "/search", label: "Busqueda Semantica", icon: Search },
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/tasks", label: "Tareas y Análisis", icon: CheckSquare },
+  { href: "/tasks", label: "Tareas y Analisis", icon: CheckSquare },
   { href: "/meetings", label: "Todas las Reuniones", icon: Brain },
   { href: "/meetings?module=investors", label: "Inversionistas", icon: TrendingUp },
   { href: "/meetings?module=clients", label: "Clientes", icon: Users },
@@ -31,12 +31,12 @@ const nav = [
   { href: "/comunidades", label: "Comunidades", icon: FolderKanban },
 ];
 
-function NavContent({ collapsed }: { collapsed: boolean }) {
+function NavContent({ collapsed }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentModule = searchParams.get("module");
 
-  const isActive = (href: string) => {
+  const isActive = (href) => {
     const [path, query] = href.split("?");
     if (path !== pathname) return false;
     if (!query) return path !== "/meetings" || !currentModule;
@@ -51,7 +51,7 @@ function NavContent({ collapsed }: { collapsed: boolean }) {
           href={href}
           title={label}
           className={cn(
-            "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors shrink-0",
+            "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
             collapsed ? "justify-center" : "",
             isActive(href)
               ? "bg-brand-600 text-white"
@@ -70,18 +70,11 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
 
-  useEffect(() => {
-    document.documentElement.style.setProperty(
-      "--sidebar-width",
-      collapsed ? "64px" : "256px"
-    );
-  }, [collapsed]);
-
   return (
     <>
       <aside
         className={cn(
-          "fixed top-0 left-0 h-screen bg-gray-900 text-gray-100 flex flex-col z-40 transition-all duration-200",
+          "sticky top-0 h-screen bg-gray-900 text-gray-100 flex flex-col shrink-0 transition-all duration-200",
           collapsed ? "w-16" : "w-64"
         )}
       >
@@ -91,15 +84,15 @@ export function Sidebar() {
         )}>
           <Brain className="text-brand-500 w-5 h-5 shrink-0" />
           {!collapsed && (
-            <span className="font-bold text-xs leading-tight flex-1 truncate">
+            <span className="font-bold text-xs leading-tight flex-1 min-w-0 truncate">
               Centro de Inteligencia<br />de Reuniones
             </span>
           )}
           <button
             type="button"
             onClick={() => setCollapsed(c => !c)}
-            title={collapsed ? "Expandir sidebar" : "Colapsar sidebar"}
-            className="text-gray-400 hover:text-white transition-colors rounded p-0.5 shrink-0"
+            title={collapsed ? "Expandir" : "Colapsar"}
+            className="text-gray-400 hover:text-white transition-colors rounded p-0.5 shrink-0 ml-auto"
           >
             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
@@ -118,14 +111,14 @@ export function Sidebar() {
           <button
             type="button"
             onClick={() => setShowUpload(true)}
-            title="Nueva Reunión"
+            title="Nueva Reunion"
             className={cn(
               "flex items-center gap-2 rounded-lg text-sm bg-brand-600 hover:bg-brand-700 text-white transition-colors font-medium",
               collapsed ? "justify-center w-10 h-10" : "w-full px-3 py-2"
             )}
           >
             <Plus className="w-4 h-4 shrink-0" />
-            {!collapsed && <span>Nueva Reunión</span>}
+            {!collapsed && <span>Nueva Reunion</span>}
           </button>
         </div>
       </aside>
