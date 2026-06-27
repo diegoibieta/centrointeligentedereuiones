@@ -2,11 +2,12 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import {
   Brain, Users, Briefcase, Truck, Building2, Search,
-  FolderKanban, Tag, User, LayoutDashboard, CheckSquare,
+  FolderKanban, LayoutDashboard, CheckSquare, Plus,
 } from "lucide-react";
+import { UploadModal } from "@/components/meetings/UploadModal";
 
 const nav = [
   { href: "/search", label: "Busqueda Semantica", icon: Search },
@@ -61,19 +62,32 @@ function NavLinks() {
 }
 
 export function Sidebar() {
+  const [showUpload, setShowUpload] = useState(false);
+
   return (
-    <aside className="w-64 bg-gray-900 text-gray-100 flex flex-col min-h-screen">
-      <div className="p-5 border-b border-gray-700">
-        <div className="flex items-center gap-2">
-          <Brain className="text-brand-500 w-6 h-6" />
-          <span className="font-bold text-sm leading-tight">Centro de Inteligencia<br />de Reuniones</span>
+    <>
+      <aside className="w-64 bg-gray-900 text-gray-100 flex flex-col min-h-screen">
+        <div className="p-5 border-b border-gray-700">
+          <div className="flex items-center gap-2">
+            <Brain className="text-brand-500 w-6 h-6" />
+            <span className="font-bold text-sm leading-tight">Centro de Inteligencia<br />de Reuniones</span>
+          </div>
         </div>
-      </div>
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        <Suspense>
-          <NavLinks />
-        </Suspense>
-      </nav>
-    </aside>
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          <Suspense>
+            <NavLinks />
+          </Suspense>
+        </nav>
+        <div className="p-3 border-t border-gray-700">
+          <button
+            onClick={() => setShowUpload(true)}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            <Plus className="w-4 h-4" />Nueva Reunion
+          </button>
+        </div>
+      </aside>
+      {showUpload && <UploadModal onClose={() => setShowUpload(false)} onSuccess={() => {}} />}
+    </>
   );
 }
