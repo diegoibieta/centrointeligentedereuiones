@@ -1,7 +1,7 @@
 ﻿"use client";
 import { useEffect, useState, useMemo } from "react";
 import { meetingsApi, companiesApi, projectsApi, Meeting, Company, Project } from "@/lib/api";
-import { CheckSquare, AlertTriangle, Lightbulb, Filter, ExternalLink, Calendar, User, ChevronDown } from "lucide-react";
+import { CheckSquare, AlertTriangle, Lightbulb, Filter, ExternalLink, Calendar, User } from "lucide-react";
 import Link from "next/link";
 
 const PRIORITY_ORDER: Record<string, number> = { alta: 0, media: 1, baja: 2 };
@@ -35,6 +35,8 @@ interface RiskRow {
   mitigation?: string;
   meetingId: string;
   meetingTitle: string;
+  companyName?: string;
+  projectName?: string;
 }
 
 interface OppRow {
@@ -43,77 +45,11 @@ interface OppRow {
   action?: string;
   meetingId: string;
   meetingTitle: string;
+  companyName?: string;
+  projectName?: string;
 }
 
-type TabKey = "tareas" | "matriz";
-
-const IMPACT_VAL: Record<string, number> = { alto: 3, medio: 2, bajo: 1 };
-const EFFORT_VAL: Record<string, number> = { alta: 3, media: 2, baja: 1 };
-
-function QuadrantChart({ items }: { items: { label: string; x: number; y: number; color: string; type: string }[] }) {
-  const W = 420, H = 320, PAD = 48;
-  const cx = PAD + (W - PAD * 2) / 2;
-  const cy = PAD + (H - PAD * 2) / 2;
-
-  const colors: Record<string, string> = {
-    "Alto / Baja": "#16a34a",
-    "Alto / Alta": "#dc2626",
-    "Bajo / Baja": "#6b7280",
-    "Bajo / Alta": "#ca8a04",
-  };
-
-  function quadrantLabel(x: number, y: number): string {
-    const highX = x >= 2.5;
-    const highY = y >= 2.5;
-    if (highX && !highY) return "Alto / Baja";
-    if (highX && highY) return "Alto / Alta";
-    if (!highX && !highY) return "Bajo / Baja";
-    return "Bajo / Alta";
-  }
-
-  return (
-    <div className="relative overflow-x-auto">
-      <svg width={W} height={H} className="overflow-visible">
-        <rect x={PAD} y={PAD} width={(W - PAD * 2) / 2} height={(H - PAD * 2) / 2} fill="#dcfce7" opacity="0.5" />
-        <rect x={cx} y={PAD} width={(W - PAD * 2) / 2} height={(H - PAD * 2) / 2} fill="#fee2e2" opacity="0.5" />
-        <rect x={PAD} y={cy} width={(W - PAD * 2) / 2} height={(H - PAD * 2) / 2} fill="#f3f4f6" opacity="0.5" />
-        <rect x={cx} y={cy} width={(W - PAD * 2) / 2} height={(H - PAD * 2) / 2} fill="#fef9c3" opacity="0.5" />
-        <text x={PAD + 8} y={PAD + 16} fontSize="10" fill="#16a34a" fontWeight="600">GANANCIAS RAPIDAS</text>
-        <text x={cx + 8} y={PAD + 16} fontSize="10" fill="#dc2626" fontWeight="600">PROYECTOS MAYORES</text>
-        <text x={PAD + 8} y={cy + 16} fontSize="10" fill="#6b7280" fontWeight="600">RELLENO</text>
-        <text x={cx + 8} y={cy + 16} fontSize="10" fill="#ca8a04" fontWeight="600">ESFUERZO DUDOSO</text>
-        <line x1={PAD} y1={PAD} x2={PAD} y2={H - PAD} stroke="#9ca3af" strokeWidth="1" />
-        <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} stroke="#9ca3af" strokeWidth="1" />
-        <line x1={cx} y1={PAD} x2={cx} y2={H - PAD} stroke="#d1d5db" strokeWidth="1" strokeDasharray="4,3" />
-        <line x1={PAD} y1={cy} x2={W - PAD} y2={cy} stroke="#d1d5db" strokeWidth="1" strokeDasharray="4,3" />
-        <text x={(PAD + W - PAD) / 2} y={H - 8} fontSize="11" fill="#6b7280" textAnchor="middle">Bajo Esfuerzo --- Alto Esfuerzo</text>
-        <text x={12} y={(PAD + H - PAD) / 2} fontSize="11" fill="#6b7280" textAnchor="middle" transform={`rotate(-90, 12, ${(PAD + H - PAD) / 2})`}>Bajo Impacto --- Alto Impacto</text>
-        {items.map((item, i) => {
-          const px = PAD + ((item.x - 1) / 2) * (W - PAD * 2);
-          const py = H - PAD - ((item.y - 1) / 2) * (H - PAD * 2);
-          const ql = quadrantLabel(item.x, item.y);
-          const dotColor = colors[ql] || "#6366f1";
-          return (
-            <g key={i}>
-              <circle cx={px} cy={py} r={7} fill={dotColor} opacity="0.85" />
-              <title>{item.label} ({item.type})</title>
-            </g>
-          );
-        })}
-      </svg>
-      <div className="flex flex-wrap gap-3 mt-2 text-xs">
-        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> Riesgos</span>
-        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-indigo-500 inline-block" /> Oportunidades</span>
-        <div className="w-full grid grid-cols-2 gap-1 mt-1">
-          <span className="text-green-700">Ganancias rapidas: alto impacto, bajo esfuerzo</span>
-          <span className="text-red-700">Proyectos mayores: alto impacto, alto esfuerzo</span>
-          <span className="text-gray-500">Relleno: bajo impacto, bajo esfuerzo</span>
-          <span className="text-yellow-700">Esfuerzo dudoso: bajo impacto, alto esfuerzo</span>
-        </div>
-      </div>
-    </div>
-  );
-}
+type TabKey = "tareas" | "analisis";
 
 export default function TasksPage() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -126,6 +62,8 @@ export default function TasksPage() {
   const [filterMeeting, setFilterMeeting] = useState("");
   const [filterPriority, setFilterPriority] = useState("");
   const [filterResponsible, setFilterResponsible] = useState("");
+  const [filterImpact, setFilterImpact] = useState("");
+  const [filterType, setFilterType] = useState("riesgo");
 
   useEffect(() => {
     Promise.all([
@@ -159,13 +97,25 @@ export default function TasksPage() {
 
   const allRisks = useMemo<RiskRow[]>(() => {
     return meetings.flatMap(m =>
-      (m.risks || []).map(r => ({ ...r, meetingId: m.id, meetingTitle: m.title }))
+      (m.risks || []).map(r => ({
+        ...r,
+        meetingId: m.id,
+        meetingTitle: m.title,
+        companyName: m.company?.name,
+        projectName: m.project?.name,
+      }))
     );
   }, [meetings]);
 
   const allOpps = useMemo<OppRow[]>(() => {
     return meetings.flatMap(m =>
-      (m.opportunities || []).map(o => ({ ...o, meetingId: m.id, meetingTitle: m.title }))
+      (m.opportunities || []).map(o => ({
+        ...o,
+        meetingId: m.id,
+        meetingTitle: m.title,
+        companyName: m.company?.name,
+        projectName: m.project?.name,
+      }))
     );
   }, [meetings]);
 
@@ -180,41 +130,39 @@ export default function TasksPage() {
     });
   }, [allTasks, filterCompany, filterProject, filterMeeting, filterPriority, filterResponsible]);
 
-  const matrixItems = useMemo(() => {
-    const risks = allRisks
-      .filter(r => !filterMeeting || r.meetingId === filterMeeting)
-      .map(r => ({
-        label: r.description,
-        type: "Riesgo",
-        x: EFFORT_VAL[r.probability || "media"] ?? 2,
-        y: IMPACT_VAL[r.impact || "medio"] ?? 2,
-        color: "#ef4444",
-      }));
-    const opps = allOpps
-      .filter(o => !filterMeeting || o.meetingId === filterMeeting)
-      .map(o => ({
-        label: o.description,
-        type: "Oportunidad",
-        x: 2,
-        y: IMPACT_VAL[o.potential || "medio"] ?? 2,
-        color: "#6366f1",
-      }));
-    return [...risks, ...opps];
-  }, [allRisks, allOpps, filterMeeting]);
+  const filteredRisks = useMemo(() => {
+    return allRisks.filter(r => {
+      if (filterCompany && r.companyName !== filterCompany) return false;
+      if (filterProject && r.projectName !== filterProject) return false;
+      if (filterMeeting && r.meetingId !== filterMeeting) return false;
+      if (filterImpact && r.impact !== filterImpact) return false;
+      return true;
+    });
+  }, [allRisks, filterCompany, filterProject, filterMeeting, filterImpact]);
+
+  const filteredOpps = useMemo(() => {
+    return allOpps.filter(o => {
+      if (filterCompany && o.companyName !== filterCompany) return false;
+      if (filterProject && o.projectName !== filterProject) return false;
+      if (filterMeeting && o.meetingId !== filterMeeting) return false;
+      if (filterImpact && o.potential !== filterImpact) return false;
+      return true;
+    });
+  }, [allOpps, filterCompany, filterProject, filterMeeting, filterImpact]);
 
   const completedMeetings = meetings.filter(m => m.status === "completed");
-  const uniqueResponsibles = [...new Set(allTasks.map(t => t.responsible).filter(Boolean))] as string[];
+  const uniqueResponsibles = Array.from(new Set(allTasks.map(t => t.responsible).filter((r): r is string => Boolean(r))));
 
-  if (loading) return <div className="p-8 text-center text-gray-400">Cargando tareas...</div>;
+  if (loading) return <div className="p-8 text-center text-gray-400">Cargando...</div>;
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-1">
           <CheckSquare className="w-5 h-5 text-brand-600" />
-          Panel de Tareas y Analisis
+          Tareas y Analisis
         </h1>
-        <p className="text-sm text-gray-500">Tareas pendientes, riesgos y oportunidades extraidos de tus reuniones.</p>
+        <p className="text-sm text-gray-500">Panel unificado de tareas, riesgos y oportunidades por reunion.</p>
       </div>
 
       <div className="grid grid-cols-3 gap-4 mb-6">
@@ -244,7 +192,7 @@ export default function TasksPage() {
       <div className="flex gap-1 mb-4 border-b">
         {([
           { key: "tareas", label: "Tareas" },
-          { key: "matriz", label: "Matriz Impacto / Esfuerzo" },
+          { key: "analisis", label: "Analisis de Riesgos y Oportunidades" },
         ] as { key: TabKey; label: string }[]).map(({ key, label }) => (
           <button
             key={key}
@@ -305,6 +253,17 @@ export default function TasksPage() {
               </div>
             </>
           )}
+          {tab === "analisis" && (
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Impacto / Potencial</label>
+              <select value={filterImpact} onChange={e => setFilterImpact(e.target.value)} className="w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <option value="">Todos</option>
+                <option value="alto">Alto</option>
+                <option value="medio">Medio</option>
+                <option value="bajo">Bajo</option>
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
@@ -317,24 +276,12 @@ export default function TasksPage() {
           ) : (
             filteredTasks.map((t, i) => (
               <div key={i} className="bg-white rounded-xl border p-4 flex gap-4 items-start hover:border-brand-300 transition-colors">
-                <div className="mt-0.5">
-                  <CheckSquare className="w-5 h-5 text-gray-300" />
-                </div>
+                <CheckSquare className="w-5 h-5 text-gray-300 mt-0.5 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 leading-snug">{t.description}</p>
                   <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
-                    {t.responsible && (
-                      <span className="flex items-center gap-1">
-                        <User className="w-3 h-3" />
-                        {t.responsible}
-                      </span>
-                    )}
-                    {t.deadline && (
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {t.deadline}
-                      </span>
-                    )}
+                    {t.responsible && <span className="flex items-center gap-1"><User className="w-3 h-3" />{t.responsible}</span>}
+                    {t.deadline && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{t.deadline}</span>}
                     {t.companyName && <span className="text-gray-400">{t.companyName}</span>}
                     {t.projectName && <span className="text-gray-400">- {t.projectName}</span>}
                   </div>
@@ -343,75 +290,87 @@ export default function TasksPage() {
                     {t.meetingTitle} - {new Date(t.meetingDate).toLocaleDateString("es-MX")}
                   </Link>
                 </div>
-                <div className="shrink-0">
-                  {t.priority && (
-                    <span className={`text-xs px-2 py-1 rounded-full border font-medium ${PRIORITY_COLORS[t.priority] || "bg-gray-100 text-gray-600"}`}>
-                      {t.priority.charAt(0).toUpperCase() + t.priority.slice(1)}
-                    </span>
-                  )}
-                </div>
+                {t.priority && (
+                  <span className={`text-xs px-2 py-1 rounded-full border font-medium shrink-0 ${PRIORITY_COLORS[t.priority] || "bg-gray-100 text-gray-600"}`}>
+                    {t.priority.charAt(0).toUpperCase() + t.priority.slice(1)}
+                  </span>
+                )}
               </div>
             ))
           )}
-          {filteredTasks.length > 0 && (
-            <p className="text-xs text-gray-400 text-right pt-1">{filteredTasks.length} tareas</p>
-          )}
+          {filteredTasks.length > 0 && <p className="text-xs text-gray-400 text-right pt-1">{filteredTasks.length} tareas</p>}
         </div>
       )}
 
-      {tab === "matriz" && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-xl border p-6">
-            <h3 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">
-              <Lightbulb className="w-4 h-4 text-yellow-500" />
-              Matriz de Impacto vs. Esfuerzo
-            </h3>
-            <p className="text-xs text-gray-400 mb-4">Riesgos y oportunidades posicionados segun su impacto potencial y el esfuerzo requerido para gestionarlos.</p>
-            {matrixItems.length === 0 ? (
-              <div className="text-center text-gray-400 text-sm py-8">No hay riesgos u oportunidades con los filtros seleccionados.</div>
-            ) : (
-              <QuadrantChart items={matrixItems} />
-            )}
+      {tab === "analisis" && (
+        <div className="space-y-4">
+          <div className="flex gap-1 border-b">
+            {([
+              { key: "riesgo", label: `Riesgos (${filteredRisks.length})` },
+              { key: "oportunidad", label: `Oportunidades (${filteredOpps.length})` },
+            ]).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setFilterType(key)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  filterType === key ? "border-brand-600 text-brand-600" : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white rounded-xl border p-4">
-              <h4 className="font-medium text-sm text-red-700 flex items-center gap-2 mb-3">
-                <AlertTriangle className="w-4 h-4" />
-                Riesgos ({allRisks.filter(r => !filterMeeting || r.meetingId === filterMeeting).length})
-              </h4>
-              <div className="space-y-2">
-                {allRisks.filter(r => !filterMeeting || r.meetingId === filterMeeting).map((r, i) => (
-                  <div key={i} className="border-l-2 border-red-300 pl-3 py-1">
-                    <p className="text-sm text-gray-800">{r.description}</p>
-                    <div className="flex gap-2 mt-1">
-                      {r.impact && <span className={`text-xs px-1.5 py-0.5 rounded ${IMPACT_COLORS[r.impact] || "bg-gray-100 text-gray-600"}`}>Impacto: {r.impact}</span>}
-                      {r.probability && <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">Prob: {r.probability}</span>}
+          {filterType === "riesgo" && (
+            <div className="bg-white rounded-xl border p-5">
+              {filteredRisks.length === 0 ? (
+                <p className="text-sm text-gray-400">No hay riesgos con los filtros seleccionados.</p>
+              ) : (
+                <div className="space-y-3">
+                  {filteredRisks.map((r, i) => (
+                    <div key={i} className="border-l-2 border-red-300 pl-4 py-1">
+                      <p className="text-sm font-medium text-gray-800">{r.description}</p>
+                      <div className="flex flex-wrap gap-2 mt-1.5">
+                        {r.impact && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${IMPACT_COLORS[r.impact] || "bg-gray-100 text-gray-600"}`}>Impacto: {r.impact}</span>}
+                        {r.probability && <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">Probabilidad: {r.probability}</span>}
+                      </div>
+                      {r.mitigation && <p className="text-xs text-gray-500 mt-1.5"><span className="font-medium">Mitigacion:</span> {r.mitigation}</p>}
+                      <div className="flex items-center gap-2 mt-1.5">
+                        {r.companyName && <span className="text-xs text-gray-400">{r.companyName}</span>}
+                        <Link href={`/meetings/${r.meetingId}`} className="inline-flex items-center gap-1 text-xs text-brand-600 hover:underline">
+                          <ExternalLink className="w-3 h-3" />{r.meetingTitle}
+                        </Link>
+                      </div>
                     </div>
-                    {r.mitigation && <p className="text-xs text-gray-500 mt-1">Mitigacion: {r.mitigation}</p>}
-                    <Link href={`/meetings/${r.meetingId}`} className="text-xs text-brand-600 hover:underline">{r.meetingTitle}</Link>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
+          )}
 
-            <div className="bg-white rounded-xl border p-4">
-              <h4 className="font-medium text-sm text-yellow-700 flex items-center gap-2 mb-3">
-                <Lightbulb className="w-4 h-4" />
-                Oportunidades ({allOpps.filter(o => !filterMeeting || o.meetingId === filterMeeting).length})
-              </h4>
-              <div className="space-y-2">
-                {allOpps.filter(o => !filterMeeting || o.meetingId === filterMeeting).map((o, i) => (
-                  <div key={i} className="border-l-2 border-yellow-300 pl-3 py-1">
-                    <p className="text-sm text-gray-800">{o.description}</p>
-                    {o.potential && <span className={`text-xs px-1.5 py-0.5 rounded ${IMPACT_COLORS[o.potential] || "bg-gray-100 text-gray-600"}`}>Potencial: {o.potential}</span>}
-                    {o.action && <p className="text-xs text-gray-500 mt-1">Accion: {o.action}</p>}
-                    <Link href={`/meetings/${o.meetingId}`} className="text-xs text-brand-600 hover:underline">{o.meetingTitle}</Link>
-                  </div>
-                ))}
-              </div>
+          {filterType === "oportunidad" && (
+            <div className="bg-white rounded-xl border p-5">
+              {filteredOpps.length === 0 ? (
+                <p className="text-sm text-gray-400">No hay oportunidades con los filtros seleccionados.</p>
+              ) : (
+                <div className="space-y-3">
+                  {filteredOpps.map((o, i) => (
+                    <div key={i} className="border-l-2 border-yellow-300 pl-4 py-1">
+                      <p className="text-sm font-medium text-gray-800">{o.description}</p>
+                      {o.potential && <span className={`inline-block mt-1.5 text-xs px-2 py-0.5 rounded-full font-medium ${IMPACT_COLORS[o.potential] || "bg-gray-100 text-gray-600"}`}>Potencial: {o.potential}</span>}
+                      {o.action && <p className="text-xs text-gray-500 mt-1.5"><span className="font-medium">Accion:</span> {o.action}</p>}
+                      <div className="flex items-center gap-2 mt-1.5">
+                        {o.companyName && <span className="text-xs text-gray-400">{o.companyName}</span>}
+                        <Link href={`/meetings/${o.meetingId}`} className="inline-flex items-center gap-1 text-xs text-brand-600 hover:underline">
+                          <ExternalLink className="w-3 h-3" />{o.meetingTitle}
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

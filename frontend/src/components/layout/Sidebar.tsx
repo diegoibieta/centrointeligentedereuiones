@@ -9,13 +9,13 @@ import {
 
 const nav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/tasks", label: "Tareas y Analisis", icon: CheckSquare },
   { href: "/meetings", label: "Todas las Reuniones", icon: Brain },
   { href: "/meetings?module=investors", label: "Inversionistas", icon: TrendingUp },
   { href: "/meetings?module=clients", label: "Clientes", icon: Users },
   { href: "/meetings?module=suppliers", label: "Proveedores", icon: Truck },
   { href: "/meetings?module=internal", label: "Internas", icon: Building2 },
   { href: "/search", label: "Busqueda Semantica", icon: Search },
-  { href: "/tasks", label: "Tareas y Analisis", icon: CheckSquare },
   { href: "/projects", label: "Proyectos", icon: FolderKanban },
   { href: "/companies", label: "Empresas", icon: Briefcase },
   { href: "/persons", label: "Personas", icon: User },
