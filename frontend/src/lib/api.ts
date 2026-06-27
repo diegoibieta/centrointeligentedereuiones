@@ -62,6 +62,9 @@ export const meetingsApi = {
   upload: (form: FormData) => api.post<Meeting>("/meetings/upload", form, {
     headers: { "Content-Type": "multipart/form-data" },
   }),
+  update: (id: string, form: FormData) => api.put<Meeting>(`/meetings/${id}`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  }),
   delete: (id: string) => api.delete(`/meetings/${id}`),
 };
 

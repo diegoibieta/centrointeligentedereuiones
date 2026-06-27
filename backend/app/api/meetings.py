@@ -13,7 +13,7 @@ from ..models.meeting import Meeting, MeetingStatus, MeetingModule
 from ..models.tag import Tag
 from ..schemas.meeting import MeetingCreate, MeetingOut, MeetingListOut
 from ..tasks.process_meeting import process_meeting_task
-from ..services.claude_service import semantic_search_query
+from ..services.claude_service import semantic_search_query, answer_question
 
 router = APIRouter(prefix="/meetings", tags=["meetings"])
 settings = get_settings()
@@ -56,7 +56,7 @@ async def upload_meeting(
 ):
     ext = os.path.splitext(audio.filename or "")[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(400, f"Formato no soportado. Usa audio ({', '.join(AUDIO_EXTENSIONS)}) o transcripcion ({', '.join(TRANSCRIPT_EXTENSIONS)})")
+        raise HTTPException(400, f"Formato no soportado.")
 
     max_bytes = settings.max_upload_mb * 1024 * 1024
     meeting_id = str(uuid.uuid4())
@@ -105,6 +105,100 @@ async def upload_meeting(
     process_meeting_task.delay(meeting_id)
 
     return meeting
+
+
+@router.put("/{meeting_id}", response_model=MeetingOut)
+async def update_meeting(
+    meeting_id: str,
+    title: str = Form(...),
+    date: str = Form(...),
+    module: MeetingModule = Form(...),
+    project_id: str | None = Form(None),
+    company_id: str | None = Form(None),
+    person_id: str | None = Form(None),
+    tag_ids: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Meeting).options(
+            selectinload(Meeting.project),
+            selectinload(Meeting.company),
+            selectinload(Meeting.person),
+            selectinload(Meeting.tags),
+        ).where(Meeting.id == meeting_id)
+    )
+    meeting = result.scalar_one_or_none()
+    if not meeting:
+        raise HTTPException(404, "Reunion no encontrada")
+    meeting.title = title
+    meeting.date = datetime.fromisoformat(date)
+    meeting.module = module
+    meeting.project_id = project_id or None
+    meeting.company_id = company_id or None
+    meeting.person_id = person_id or None
+    tag_id_list = [t.strip() for t in tag_ids.split(",") if t.strip()]
+    if tag_id_list:
+        tag_result = await db.execute(select(Tag).where(Tag.id.in_(tag_id_list)))
+        meeting.tags = list(tag_result.scalars().all())
+    else:
+        meeting.tags = []
+    await db.flush()
+    await db.refresh(meeting, ["project", "company", "person", "tags"])
+    return meeting
+
+
+@router.post("/ask")
+async def ask_meetings(
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    question = body.get("question", "").strip()
+    if not question:
+        raise HTTPException(400, "Pregunta vacia")
+
+    result = await db.execute(
+        select(Meeting).options(
+            selectinload(Meeting.project),
+            selectinload(Meeting.company),
+            selectinload(Meeting.person),
+        ).where(Meeting.status == MeetingStatus.completed)
+    )
+    all_meetings = result.scalars().all()
+
+    meeting_dicts = [
+        {"id": m.id, "title": m.title, "summary": m.summary}
+        for m in all_meetings
+    ]
+    ranked_ids = semantic_search_query(question, meeting_dicts)
+    id_to_meeting = {m.id: m for m in all_meetings}
+    relevant = [id_to_meeting[mid] for mid in ranked_ids[:5] if mid in id_to_meeting]
+
+    context = []
+    for m in relevant:
+        ctx = f"REUNION: {m.title} ({m.date.strftime('%d/%m/%Y')})"
+        if m.company:
+            ctx += f" | Empresa: {m.company.name}"
+        if m.person:
+            ctx += f" | Persona: {m.person.name}"
+        if m.summary:
+            ctx += f"\nResumen: {m.summary}"
+        if m.agreements:
+            ctx += "\nAcuerdos: " + "; ".join(a.get("description", "") for a in m.agreements)
+        if m.tasks:
+            ctx += "\nTareas: " + "; ".join(t.get("description", "") for t in m.tasks)
+        if m.risks:
+            ctx += "\nRiesgos: " + "; ".join(r.get("description", "") for r in m.risks)
+        if m.opportunities:
+            ctx += "\nOportunidades: " + "; ".join(o.get("description", "") for o in m.opportunities)
+        context.append(ctx)
+
+    answer = answer_question(question, context)
+
+    sources = [
+        {"id": m.id, "title": m.title, "date": m.date.isoformat()}
+        for m in relevant
+    ]
+    return {"answer": answer, "sources": sources}
 
 
 @router.get("/", response_model=list[MeetingListOut])
