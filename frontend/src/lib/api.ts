@@ -8,9 +8,25 @@ export type MeetingModule = "investors" | "clients" | "suppliers" | "internal";
 export type MeetingStatus = "pending" | "transcribing" | "analyzing" | "completed" | "error";
 
 export interface Tag { id: string; name: string; color: string; }
-export interface Project { id: string; name: string; description?: string; created_at: string; }
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  company_id?: string;
+  company?: { id: string; name: string };
+  persons: { id: string; name: string; role?: string }[];
+  created_at: string;
+}
 export interface Company { id: string; name: string; sector?: string; notes?: string; created_at: string; }
-export interface Person { id: string; name: string; role?: string; email?: string; company_id?: string; created_at: string; }
+export interface Person {
+  id: string;
+  name: string;
+  role?: string;
+  email?: string;
+  company_id?: string;
+  projects: { id: string; name: string }[];
+  created_at: string;
+}
 
 export interface MeetingListItem {
   id: string;
@@ -42,6 +58,7 @@ export const meetingsApi = {
   list: (params?: Record<string, string>) => api.get<MeetingListItem[]>("/meetings/", { params }),
   get: (id: string) => api.get<Meeting>(`/meetings/${id}`),
   search: (q: string) => api.get<MeetingListItem[]>("/meetings/search", { params: { q } }),
+  ask: (question: string) => api.post<{ answer: string; sources: { id: string; title: string; date: string }[] }>("/meetings/ask", { question }),
   upload: (form: FormData) => api.post<Meeting>("/meetings/upload", form, {
     headers: { "Content-Type": "multipart/form-data" },
   }),
@@ -50,8 +67,10 @@ export const meetingsApi = {
 
 export const projectsApi = {
   list: () => api.get<Project[]>("/projects/"),
-  create: (data: { name: string; description?: string }) => api.post<Project>("/projects/", data),
-  update: (id: string, data: { name: string; description?: string }) => api.put<Project>(`/projects/${id}`, data),
+  create: (data: { name: string; description?: string; company_id?: string; person_ids?: string[] }) =>
+    api.post<Project>("/projects/", data),
+  update: (id: string, data: { name: string; description?: string; company_id?: string; person_ids?: string[] }) =>
+    api.put<Project>(`/projects/${id}`, data),
   delete: (id: string) => api.delete(`/projects/${id}`),
 };
 
@@ -64,9 +83,9 @@ export const companiesApi = {
 
 export const personsApi = {
   list: () => api.get<Person[]>("/persons/"),
-  create: (data: { name: string; role?: string; email?: string; company_id?: string }) =>
+  create: (data: { name: string; role?: string; email?: string; company_id?: string; project_ids?: string[] }) =>
     api.post<Person>("/persons/", data),
-  update: (id: string, data: { name: string; role?: string; email?: string; company_id?: string }) =>
+  update: (id: string, data: { name: string; role?: string; email?: string; company_id?: string; project_ids?: string[] }) =>
     api.put<Person>(`/persons/${id}`, data),
   delete: (id: string) => api.delete(`/persons/${id}`),
 };
