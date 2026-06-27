@@ -2,10 +2,19 @@
 import { useEffect, useState } from "react";
 import { companiesApi, projectsApi, personsApi, tagsApi, Company, Project, Person, Tag } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
-import { Plus, Briefcase, FolderKanban, User, Tag as TagIcon, Pencil, Trash2, Check, X, Building2, Users } from "lucide-react";
+import { Plus, Briefcase, FolderKanban, User, Tag as TagIcon, Pencil, Trash2, Check, X, Building2, Users, CheckCircle } from "lucide-react";
 
 const PRESET_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6"];
 const inputCls = "w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500";
+
+function Toast({ msg, onDone }: { msg: string; onDone: () => void }) {
+  useEffect(() => { const t = setTimeout(onDone, 2500); return () => clearTimeout(t); }, []);
+  return (
+    <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-green-600 text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium animate-fade-in">
+      <CheckCircle className="w-4 h-4" />{msg}
+    </div>
+  );
+}
 
 function MultiSelect({ options, selected, onChange, emptyMsg }: {
   options: { id: string; name: string; role?: string }[];
@@ -29,7 +38,7 @@ function MultiSelect({ options, selected, onChange, emptyMsg }: {
   );
 }
 
-function EmpresasTab() {
+function EmpresasTab({ toast }: { toast: (m: string) => void }) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [name, setName] = useState("");
   const [sector, setSector] = useState("");
@@ -42,12 +51,12 @@ function EmpresasTab() {
     e.preventDefault();
     if (!name.trim()) return;
     await companiesApi.create({ name: name.trim(), sector: sector.trim() || undefined });
-    setName(""); setSector(""); load();
+    setName(""); setSector(""); load(); toast("Empresa agregada");
   };
   const handleUpdate = async (id: string) => {
     if (!editName.trim()) return;
     await companiesApi.update(id, { name: editName.trim(), sector: editSector.trim() || undefined });
-    setEditId(null); load();
+    setEditId(null); load(); toast("Empresa actualizada");
   };
   const handleDelete = async (id: string) => {
     if (!confirm("Eliminar esta empresa?")) return;
@@ -92,7 +101,7 @@ function EmpresasTab() {
   );
 }
 
-function ProyectosTab() {
+function ProyectosTab({ toast }: { toast: (m: string) => void }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
@@ -111,12 +120,12 @@ function ProyectosTab() {
     e.preventDefault();
     if (!name.trim()) return;
     await projectsApi.create({ name: name.trim(), description: description.trim() || undefined, company_id: companyId || undefined, person_ids: personIds });
-    setName(""); setDescription(""); setCompanyId(""); setPersonIds([]); load();
+    setName(""); setDescription(""); setCompanyId(""); setPersonIds([]); load(); toast("Proyecto creado");
   };
   const handleUpdate = async (id: string) => {
     if (!editName.trim()) return;
     await projectsApi.update(id, { name: editName.trim(), description: editDescription.trim() || undefined, company_id: editCompanyId || undefined, person_ids: editPersonIds });
-    setEditId(null); load();
+    setEditId(null); load(); toast("Proyecto actualizado");
   };
   const handleDelete = async (id: string) => {
     if (!confirm("Eliminar este proyecto?")) return;
@@ -187,7 +196,7 @@ function ProyectosTab() {
   );
 }
 
-function PersonasTab() {
+function PersonasTab({ toast }: { toast: (m: string) => void }) {
   const [persons, setPersons] = useState<Person[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -208,12 +217,12 @@ function PersonasTab() {
     e.preventDefault();
     if (!name.trim()) return;
     await personsApi.create({ name: name.trim(), role: role || undefined, email: email || undefined, company_id: companyId || undefined, project_ids: projectIds });
-    setName(""); setRole(""); setEmail(""); setCompanyId(""); setProjectIds([]); load();
+    setName(""); setRole(""); setEmail(""); setCompanyId(""); setProjectIds([]); load(); toast("Persona agregada");
   };
   const handleUpdate = async (id: string) => {
     if (!editName.trim()) return;
     await personsApi.update(id, { name: editName.trim(), role: editRole || undefined, email: editEmail || undefined, company_id: editCompanyId || undefined, project_ids: editProjectIds });
-    setEditId(null); load();
+    setEditId(null); load(); toast("Persona actualizada");
   };
   const handleDelete = async (id: string) => {
     if (!confirm("Eliminar esta persona?")) return;
@@ -294,7 +303,7 @@ function PersonasTab() {
   );
 }
 
-function EtiquetasTab() {
+function EtiquetasTab({ toast }: { toast: (m: string) => void }) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [name, setName] = useState("");
   const [color, setColor] = useState("#6366f1");
@@ -304,7 +313,7 @@ function EtiquetasTab() {
     e.preventDefault();
     if (!name.trim()) return;
     await tagsApi.create({ name: name.trim(), color });
-    setName(""); load();
+    setName(""); load(); toast("Etiqueta creada");
   };
   return (
     <div className="space-y-4">
@@ -338,6 +347,9 @@ const TABS = [
 
 export default function ComunidadesPage() {
   const [tab, setTab] = useState("empresas");
+  const [toastMsg, setToastMsg] = useState("");
+  const showToast = (m: string) => setToastMsg(m);
+
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <h1 className="text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
@@ -351,10 +363,11 @@ export default function ComunidadesPage() {
           </button>
         ))}
       </div>
-      {tab === "empresas" && <EmpresasTab />}
-      {tab === "proyectos" && <ProyectosTab />}
-      {tab === "personas" && <PersonasTab />}
-      {tab === "etiquetas" && <EtiquetasTab />}
+      {tab === "empresas" && <EmpresasTab toast={showToast} />}
+      {tab === "proyectos" && <ProyectosTab toast={showToast} />}
+      {tab === "personas" && <PersonasTab toast={showToast} />}
+      {tab === "etiquetas" && <EtiquetasTab toast={showToast} />}
+      {toastMsg && <Toast msg={toastMsg} onDone={() => setToastMsg("")} />}
     </div>
   );
 }

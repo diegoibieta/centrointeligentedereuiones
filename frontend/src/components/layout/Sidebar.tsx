@@ -1,7 +1,8 @@
 ﻿"use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { Suspense } from "react";
 import {
   Brain, Users, Briefcase, Truck, Building2, Search,
   FolderKanban, Tag, User, LayoutDashboard, CheckSquare,
@@ -28,8 +29,38 @@ function TrendingUp(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-export function Sidebar() {
+function NavLinks() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentModule = searchParams.get("module");
+
+  return (
+    <>
+      {nav.map(({ href, label, icon: Icon }) => {
+        const [path, query] = href.split("?");
+        const module = query ? new URLSearchParams(query).get("module") : null;
+        const active = pathname === path && currentModule === module;
+        return (
+          <Link
+            key={href}
+            href={href}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+              active
+                ? "bg-brand-600 text-white"
+                : "text-gray-400 hover:bg-gray-800 hover:text-white"
+            )}
+          >
+            <Icon className="w-4 h-4 shrink-0" />
+            {label}
+          </Link>
+        );
+      })}
+    </>
+  );
+}
+
+export function Sidebar() {
   return (
     <aside className="w-64 bg-gray-900 text-gray-100 flex flex-col min-h-screen">
       <div className="p-5 border-b border-gray-700">
@@ -39,24 +70,9 @@ export function Sidebar() {
         </div>
       </div>
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {nav.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href.split("?")[0] && (!href.includes("?") || typeof window !== "undefined" && window.location.href.includes(href.split("?")[1] || ""));
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-                active
-                  ? "bg-brand-600 text-white"
-                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
-              )}
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              {label}
-            </Link>
-          );
-        })}
+        <Suspense>
+          <NavLinks />
+        </Suspense>
       </nav>
     </aside>
   );
