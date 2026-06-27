@@ -36,28 +36,23 @@ function EmpresasTab() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editSector, setEditSector] = useState("");
-
   const load = () => companiesApi.list().then(r => setCompanies(r.data));
   useEffect(() => { load(); }, []);
-
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     await companiesApi.create({ name: name.trim(), sector: sector.trim() || undefined });
     setName(""); setSector(""); load();
   };
-
   const handleUpdate = async (id: string) => {
     if (!editName.trim()) return;
     await companiesApi.update(id, { name: editName.trim(), sector: editSector.trim() || undefined });
     setEditId(null); load();
   };
-
   const handleDelete = async (id: string) => {
     if (!confirm("Eliminar esta empresa?")) return;
     await companiesApi.delete(id); load();
   };
-
   return (
     <div className="space-y-4">
       <form onSubmit={handleAdd} className="bg-white rounded-xl border p-4 space-y-3">
@@ -74,8 +69,8 @@ function EmpresasTab() {
                 <input autoFocus value={editName} onChange={e => setEditName(e.target.value)} className={inputCls} />
                 <input value={editSector} onChange={e => setEditSector(e.target.value)} placeholder="Sector (opcional)" className={inputCls} />
                 <div className="flex gap-2">
-                  <button onClick={() => handleUpdate(c.id)} className="flex items-center gap-1 px-3 py-1 bg-brand-600 text-white rounded-lg text-sm hover:bg-brand-700"><Check className="w-3.5 h-3.5" />Guardar</button>
-                  <button onClick={() => setEditId(null)} className="flex items-center gap-1 px-3 py-1 border rounded-lg text-sm text-gray-500 hover:bg-gray-50"><X className="w-3.5 h-3.5" />Cancelar</button>
+                  <button type="button" onClick={() => handleUpdate(c.id)} className="flex items-center gap-1 px-3 py-1 bg-brand-600 text-white rounded-lg text-sm hover:bg-brand-700"><Check className="w-3.5 h-3.5" />Guardar</button>
+                  <button type="button" onClick={() => setEditId(null)} className="flex items-center gap-1 px-3 py-1 border rounded-lg text-sm text-gray-500 hover:bg-gray-50"><X className="w-3.5 h-3.5" />Cancelar</button>
                 </div>
               </div>
             ) : (
@@ -85,8 +80,8 @@ function EmpresasTab() {
                   {c.sector && <p className="text-sm text-gray-500">{c.sector}</p>}
                 </div>
                 <div className="flex gap-1 ml-3 shrink-0">
-                  <button onClick={() => { setEditId(c.id); setEditName(c.name); setEditSector(c.sector || ""); }} className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg"><Pencil className="w-4 h-4" /></button>
-                  <button onClick={() => handleDelete(c.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                  <button type="button" onClick={() => { setEditId(c.id); setEditName(c.name); setEditSector(c.sector || ""); }} className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg"><Pencil className="w-4 h-4" /></button>
+                  <button type="button" onClick={() => handleDelete(c.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
             )}
@@ -110,32 +105,23 @@ function ProyectosTab() {
   const [editDescription, setEditDescription] = useState("");
   const [editCompanyId, setEditCompanyId] = useState("");
   const [editPersonIds, setEditPersonIds] = useState<string[]>([]);
-
   const load = () => projectsApi.list().then(r => setProjects(r.data));
-  useEffect(() => {
-    load();
-    companiesApi.list().then(r => setCompanies(r.data));
-    personsApi.list().then(r => setPersons(r.data));
-  }, []);
-
+  useEffect(() => { load(); companiesApi.list().then(r => setCompanies(r.data)); personsApi.list().then(r => setPersons(r.data)); }, []);
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     await projectsApi.create({ name: name.trim(), description: description.trim() || undefined, company_id: companyId || undefined, person_ids: personIds });
     setName(""); setDescription(""); setCompanyId(""); setPersonIds([]); load();
   };
-
   const handleUpdate = async (id: string) => {
     if (!editName.trim()) return;
     await projectsApi.update(id, { name: editName.trim(), description: editDescription.trim() || undefined, company_id: editCompanyId || undefined, person_ids: editPersonIds });
     setEditId(null); load();
   };
-
   const handleDelete = async (id: string) => {
     if (!confirm("Eliminar este proyecto?")) return;
     await projectsApi.delete(id); load();
   };
-
   return (
     <div className="space-y-4">
       <form onSubmit={handleAdd} className="bg-white rounded-xl border p-4 space-y-3">
@@ -174,8 +160,8 @@ function ProyectosTab() {
                   <MultiSelect options={persons} selected={editPersonIds} onChange={setEditPersonIds} emptyMsg="No hay personas registradas" />
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleUpdate(p.id)} className="flex items-center gap-1 px-3 py-1 bg-brand-600 text-white rounded-lg text-sm hover:bg-brand-700"><Check className="w-3.5 h-3.5" />Guardar</button>
-                  <button onClick={() => setEditId(null)} className="flex items-center gap-1 px-3 py-1 border rounded-lg text-sm text-gray-500 hover:bg-gray-50"><X className="w-3.5 h-3.5" />Cancelar</button>
+                  <button type="button" onClick={() => handleUpdate(p.id)} className="flex items-center gap-1 px-3 py-1 bg-brand-600 text-white rounded-lg text-sm hover:bg-brand-700"><Check className="w-3.5 h-3.5" />Guardar</button>
+                  <button type="button" onClick={() => setEditId(null)} className="flex items-center gap-1 px-3 py-1 border rounded-lg text-sm text-gray-500 hover:bg-gray-50"><X className="w-3.5 h-3.5" />Cancelar</button>
                 </div>
               </div>
             ) : (
@@ -189,8 +175,8 @@ function ProyectosTab() {
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
-                  <button onClick={() => { setEditId(p.id); setEditName(p.name); setEditDescription(p.description || ""); setEditCompanyId(p.company_id || ""); setEditPersonIds((p.persons || []).map(x => x.id)); }} className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg"><Pencil className="w-4 h-4" /></button>
-                  <button onClick={() => handleDelete(p.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                  <button type="button" onClick={() => { setEditId(p.id); setEditName(p.name); setEditDescription(p.description || ""); setEditCompanyId(p.company_id || ""); setEditPersonIds((p.persons || []).map(x => x.id)); }} className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg"><Pencil className="w-4 h-4" /></button>
+                  <button type="button" onClick={() => handleDelete(p.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
             )}
@@ -200,6 +186,7 @@ function ProyectosTab() {
     </div>
   );
 }
+
 function PersonasTab() {
   const [persons, setPersons] = useState<Person[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -215,34 +202,24 @@ function PersonasTab() {
   const [editEmail, setEditEmail] = useState("");
   const [editCompanyId, setEditCompanyId] = useState("");
   const [editProjectIds, setEditProjectIds] = useState<string[]>([]);
-
   const load = () => personsApi.list().then(r => setPersons(r.data));
-  useEffect(() => {
-    load();
-    companiesApi.list().then(r => setCompanies(r.data));
-    projectsApi.list().then(r => setProjects(r.data));
-  }, []);
-
+  useEffect(() => { load(); companiesApi.list().then(r => setCompanies(r.data)); projectsApi.list().then(r => setProjects(r.data)); }, []);
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    await personsApi.create({ name, role: role || undefined, email: email || undefined, company_id: companyId || undefined, project_ids: projectIds });
+    await personsApi.create({ name: name.trim(), role: role || undefined, email: email || undefined, company_id: companyId || undefined, project_ids: projectIds });
     setName(""); setRole(""); setEmail(""); setCompanyId(""); setProjectIds([]); load();
   };
-
   const handleUpdate = async (id: string) => {
     if (!editName.trim()) return;
     await personsApi.update(id, { name: editName.trim(), role: editRole || undefined, email: editEmail || undefined, company_id: editCompanyId || undefined, project_ids: editProjectIds });
     setEditId(null); load();
   };
-
   const handleDelete = async (id: string) => {
     if (!confirm("Eliminar esta persona?")) return;
     await personsApi.delete(id); load();
   };
-
   const companyName = (id?: string) => companies.find(c => c.id === id)?.name;
-
   return (
     <div className="space-y-4">
       <form onSubmit={handleAdd} className="bg-white rounded-xl border p-4 space-y-3">
@@ -281,8 +258,8 @@ function PersonasTab() {
                   <MultiSelect options={projects} selected={editProjectIds} onChange={setEditProjectIds} emptyMsg="No hay proyectos registrados" />
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleUpdate(p.id)} className="flex items-center gap-1 px-3 py-1 bg-brand-600 text-white rounded-lg text-sm hover:bg-brand-700"><Check className="w-3.5 h-3.5" />Guardar</button>
-                  <button onClick={() => setEditId(null)} className="flex items-center gap-1 px-3 py-1 border rounded-lg text-sm text-gray-500 hover:bg-gray-50"><X className="w-3.5 h-3.5" />Cancelar</button>
+                  <button type="button" onClick={() => handleUpdate(p.id)} className="flex items-center gap-1 px-3 py-1 bg-brand-600 text-white rounded-lg text-sm hover:bg-brand-700"><Check className="w-3.5 h-3.5" />Guardar</button>
+                  <button type="button" onClick={() => setEditId(null)} className="flex items-center gap-1 px-3 py-1 border rounded-lg text-sm text-gray-500 hover:bg-gray-50"><X className="w-3.5 h-3.5" />Cancelar</button>
                 </div>
               </div>
             ) : (
@@ -305,8 +282,8 @@ function PersonasTab() {
                   )}
                 </div>
                 <div className="flex gap-1 shrink-0">
-                  <button onClick={() => { setEditId(p.id); setEditName(p.name); setEditRole(p.role || ""); setEditEmail(p.email || ""); setEditCompanyId(p.company_id || ""); setEditProjectIds((p.projects || []).map(x => x.id)); }} className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg"><Pencil className="w-4 h-4" /></button>
-                  <button onClick={() => handleDelete(p.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                  <button type="button" onClick={() => { setEditId(p.id); setEditName(p.name); setEditRole(p.role || ""); setEditEmail(p.email || ""); setEditCompanyId(p.company_id || ""); setEditProjectIds((p.projects || []).map(x => x.id)); }} className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg"><Pencil className="w-4 h-4" /></button>
+                  <button type="button" onClick={() => handleDelete(p.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
             )}
@@ -321,17 +298,14 @@ function EtiquetasTab() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [name, setName] = useState("");
   const [color, setColor] = useState("#6366f1");
-
   const load = () => tagsApi.list().then(r => setTags(r.data));
   useEffect(() => { load(); }, []);
-
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     await tagsApi.create({ name: name.trim(), color });
     setName(""); load();
   };
-
   return (
     <div className="space-y-4">
       <form onSubmit={handleAdd} className="bg-white rounded-xl border p-4 space-y-3">
@@ -348,9 +322,7 @@ function EtiquetasTab() {
       </form>
       <div className="flex flex-wrap gap-2">
         {tags.map(t => (
-          <span key={t.id} className="px-3 py-1.5 rounded-full text-sm text-white font-medium" style={{ backgroundColor: t.color }}>
-            {t.name}
-          </span>
+          <span key={t.id} className="px-3 py-1.5 rounded-full text-sm text-white font-medium" style={{ backgroundColor: t.color }}>{t.name}</span>
         ))}
       </div>
     </div>
@@ -366,7 +338,6 @@ const TABS = [
 
 export default function ComunidadesPage() {
   const [tab, setTab] = useState("empresas");
-
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <h1 className="text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
@@ -374,13 +345,8 @@ export default function ComunidadesPage() {
       </h1>
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6">
         {TABS.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              tab === key ? "bg-white text-brand-700 shadow-sm" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
+          <button key={key} type="button" onClick={() => setTab(key)}
+            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${tab === key ? "bg-white text-brand-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
             <Icon className="w-4 h-4" />{label}
           </button>
         ))}
