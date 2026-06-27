@@ -1,7 +1,7 @@
 ﻿"use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { meetingsApi, projectsApi, companiesApi, personsApi, tagsApi, Meeting, Project, Company, Person, Tag } from "@/lib/api";
+import { meetingsApi, Meeting } from "@/lib/api";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import {
@@ -10,135 +10,8 @@ import {
 } from "@/lib/utils";
 import {
   ArrowLeft, Calendar, Clock, Building2, User, FolderKanban,
-  RefreshCw, Trash2, Globe, Pencil, X, Check, Loader2,
+  RefreshCw, Trash2, Globe,
 } from "lucide-react";
-
-function EditModal({ meeting, onClose, onSaved }: { meeting: Meeting; onClose: () => void; onSaved: () => void }) {
-  const [title, setTitle] = useState(meeting.title);
-  const [date, setDate] = useState(meeting.date.slice(0, 16));
-  const [module, setModule] = useState(meeting.module);
-  const [companyId, setCompanyId] = useState(meeting.company?.id || "");
-  const [projectId, setProjectId] = useState(meeting.project?.id || "");
-  const [personId, setPersonId] = useState(meeting.person?.id || "");
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(meeting.tags.map(t => t.id));
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [persons, setPersons] = useState<Person[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    Promise.all([companiesApi.list(), projectsApi.list(), personsApi.list(), tagsApi.list()])
-      .then(([c, p, pe, t]) => {
-        setCompanies(c.data); setProjects(p.data); setPersons(pe.data); setTags(t.data);
-      });
-  }, []);
-
-  const filteredProjects = companyId ? projects.filter(p => p.company_id === companyId) : projects;
-  const filteredPersons = projectId
-    ? (projects.find(p => p.id === projectId)?.persons || []).map(x => persons.find(pe => pe.id === x.id)).filter(Boolean) as Person[]
-    : companyId ? persons.filter(pe => pe.company_id === companyId) : persons;
-
-  const handleCompanyChange = (id: string) => { setCompanyId(id); setProjectId(""); setPersonId(""); };
-  const handleProjectChange = (id: string) => {
-    setProjectId(id); setPersonId("");
-    if (id) { const proj = projects.find(p => p.id === id); if (proj?.company_id && !companyId) setCompanyId(proj.company_id); }
-  };
-  const toggleTag = (id: string) => setSelectedTagIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-
-  const handleSave = async () => {
-    if (!title.trim()) return;
-    setSaving(true);
-    const form = new FormData();
-    form.append("title", title.trim());
-    form.append("date", date);
-    form.append("module", module);
-    if (companyId) form.append("company_id", companyId);
-    if (projectId) form.append("project_id", projectId);
-    if (personId) form.append("person_id", personId);
-    form.append("tag_ids", selectedTagIds.join(","));
-    await meetingsApi.update(meeting.id, form);
-    setSaving(false);
-    onSaved();
-    onClose();
-  };
-
-  const selectCls = "w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500";
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b">
-          <h2 className="text-lg font-semibold">Editar Reunion</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
-        </div>
-        <div className="p-5 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Titulo *</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} className={selectCls} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha *</label>
-              <input type="datetime-local" value={date} onChange={e => setDate(e.target.value)} className={selectCls} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Modulo *</label>
-              <select value={module} onChange={e => setModule(e.target.value as any)} className={selectCls}>
-                <option value="investors">Inversionistas</option>
-                <option value="clients">Clientes</option>
-                <option value="suppliers">Proveedores</option>
-                <option value="internal">Reunion Interna</option>
-              </select>
-            </div>
-          </div>
-          <div className="space-y-3 bg-gray-50 rounded-xl p-3">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Contexto</p>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
-              <select value={companyId} onChange={e => handleCompanyChange(e.target.value)} className={selectCls}>
-                <option value="">Sin empresa</option>
-                {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Proyecto</label>
-              <select value={projectId} onChange={e => handleProjectChange(e.target.value)} className={selectCls}>
-                <option value="">Sin proyecto</option>
-                {filteredProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Persona</label>
-              <select value={personId} onChange={e => setPersonId(e.target.value)} className={selectCls}>
-                <option value="">Sin persona</option>
-                {filteredPersons.map(p => <option key={p.id} value={p.id}>{p.name}{p.role ? ` — ${p.role}` : ""}</option>)}
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Etiquetas</label>
-            <div className="flex flex-wrap gap-2">
-              {tags.map(t => (
-                <button key={t.id} type="button" onClick={() => toggleTag(t.id)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border-2 transition-all ${selectedTagIds.includes(t.id) ? "text-white border-transparent" : "bg-white border-gray-200 text-gray-600"}`}
-                  style={selectedTagIds.includes(t.id) ? { backgroundColor: t.color, borderColor: t.color } : {}}>
-                  {t.name}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando...</> : <><Check className="w-4 h-4 mr-1" />Guardar</>}
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function MeetingDetail() {
   const { id } = useParams<{ id: string }>();
@@ -146,7 +19,6 @@ export default function MeetingDetail() {
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("resumen");
-  const [showEdit, setShowEdit] = useState(false);
 
   const load = () => {
     meetingsApi.get(id).then(r => {
@@ -177,12 +49,12 @@ export default function MeetingDetail() {
   const isProcessing = ["pending", "transcribing", "analyzing"].includes(meeting.status);
 
   const tabs = meeting.status === "completed" ? [
-    { key: "resumen", label: "Resumen", show: !!meeting.summary },
-    { key: "acuerdos", label: "Acuerdos", show: (meeting.agreements?.length ?? 0) > 0 },
-    { key: "tareas", label: "Tareas", show: (meeting.tasks?.length ?? 0) > 0 },
-    { key: "riesgos", label: "Riesgos", show: (meeting.risks?.length ?? 0) > 0 },
-    { key: "oportunidades", label: "Oportunidades", show: (meeting.opportunities?.length ?? 0) > 0 },
-  ].filter(t => t.show) : [];
+    { key: "resumen", label: "Resumen" },
+    { key: "acuerdos", label: "Acuerdos" },
+    { key: "tareas", label: "Tareas" },
+    { key: "riesgos", label: "Riesgos" },
+    { key: "oportunidades", label: "Oportunidades" },
+  ] : [];
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -206,10 +78,7 @@ export default function MeetingDetail() {
             )}
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={() => setShowEdit(true)}><Pencil className="w-4 h-4" /></Button>
-          <Button variant="danger" size="sm" onClick={handleDelete}><Trash2 className="w-4 h-4" /></Button>
-        </div>
+        <Button variant="danger" size="sm" onClick={handleDelete}><Trash2 className="w-4 h-4" /></Button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 text-sm">
@@ -285,64 +154,70 @@ export default function MeetingDetail() {
               <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{meeting.summary}</p>
             )}
             {tab === "acuerdos" && (
-              <ul className="space-y-3">
-                {meeting.agreements!.map((a, i) => (
-                  <li key={i} className="text-sm border-l-2 border-green-400 pl-3">
-                    <p className="text-gray-800">{a.description}</p>
-                    {(a.responsible || a.deadline) && (
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {a.responsible && `Responsable: ${a.responsible}`}
-                        {a.responsible && a.deadline && " · "}
-                        {a.deadline && `Fecha: ${a.deadline}`}
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              (meeting.agreements?.length ?? 0) === 0
+                ? <p className="text-sm text-gray-400 italic">No se determinó la existencia de acuerdos en esta reunión.</p>
+                : <ul className="space-y-3">
+                    {meeting.agreements!.map((a, i) => (
+                      <li key={i} className="text-sm border-l-2 border-green-400 pl-3">
+                        <p className="text-gray-800">{a.description}</p>
+                        {(a.responsible || a.deadline) && (
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {a.responsible && `Responsable: ${a.responsible}`}
+                            {a.responsible && a.deadline && " · "}
+                            {a.deadline && `Fecha: ${a.deadline}`}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
             )}
             {tab === "tareas" && (
-              <ul className="space-y-3">
-                {meeting.tasks!.map((t, i) => (
-                  <li key={i} className="text-sm border-l-2 border-blue-400 pl-3">
-                    <p className="text-gray-800">{t.description}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {t.priority && <span className={`font-medium ${PRIORITY_COLORS[t.priority] || ""}`}>Prioridad: {t.priority}</span>}
-                      {t.responsible && ` · Responsable: ${t.responsible}`}
-                      {t.deadline && ` · Fecha: ${t.deadline}`}
-                    </p>
-                  </li>
-                ))}
-              </ul>
+              (meeting.tasks?.length ?? 0) === 0
+                ? <p className="text-sm text-gray-400 italic">No se determinó la existencia de tareas en esta reunión.</p>
+                : <ul className="space-y-3">
+                    {meeting.tasks!.map((t, i) => (
+                      <li key={i} className="text-sm border-l-2 border-blue-400 pl-3">
+                        <p className="text-gray-800">{t.description}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {t.priority && <span className={`font-medium ${PRIORITY_COLORS[t.priority] || ""}`}>Prioridad: {t.priority}</span>}
+                          {t.responsible && ` · Responsable: ${t.responsible}`}
+                          {t.deadline && ` · Fecha: ${t.deadline}`}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
             )}
             {tab === "riesgos" && (
-              <ul className="space-y-3">
-                {meeting.risks!.map((r, i) => (
-                  <li key={i} className="text-sm border-l-2 border-red-400 pl-3">
-                    <p className="text-gray-800">{r.description}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {r.impact && `Impacto: ${r.impact}`}
-                      {r.probability && ` · Probabilidad: ${r.probability}`}
-                    </p>
-                    {r.mitigation && <p className="text-xs text-gray-500 mt-0.5">Mitigacion: {r.mitigation}</p>}
-                  </li>
-                ))}
-              </ul>
+              (meeting.risks?.length ?? 0) === 0
+                ? <p className="text-sm text-gray-400 italic">No se determinó la existencia de riesgos en esta reunión.</p>
+                : <ul className="space-y-3">
+                    {meeting.risks!.map((r, i) => (
+                      <li key={i} className="text-sm border-l-2 border-red-400 pl-3">
+                        <p className="text-gray-800">{r.description}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {r.impact && `Impacto: ${r.impact}`}
+                          {r.probability && ` · Probabilidad: ${r.probability}`}
+                        </p>
+                        {r.mitigation && <p className="text-xs text-gray-500 mt-0.5">Mitigacion: {r.mitigation}</p>}
+                      </li>
+                    ))}
+                  </ul>
             )}
             {tab === "oportunidades" && (
-              <ul className="space-y-3">
-                {meeting.opportunities!.map((o, i) => (
-                  <li key={i} className="text-sm border-l-2 border-yellow-400 pl-3">
-                    <p className="text-gray-800">{o.description}</p>
-                    {o.action && <p className="text-xs text-gray-500 mt-0.5">Accion: {o.action}</p>}
-                  </li>
-                ))}
-              </ul>
+              (meeting.opportunities?.length ?? 0) === 0
+                ? <p className="text-sm text-gray-400 italic">No se determinó la existencia de oportunidades en esta reunión.</p>
+                : <ul className="space-y-3">
+                    {meeting.opportunities!.map((o, i) => (
+                      <li key={i} className="text-sm border-l-2 border-yellow-400 pl-3">
+                        <p className="text-gray-800">{o.description}</p>
+                        {o.action && <p className="text-xs text-gray-500 mt-0.5">Accion: {o.action}</p>}
+                      </li>
+                    ))}
+                  </ul>
             )}
           </div>
         </>
       )}
-
-      {showEdit && <EditModal meeting={meeting} onClose={() => setShowEdit(false)} onSaved={load} />}
     </div>
   );
 }
