@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 const nav = [
+  { href: "/search", label: "Busqueda Semantica", icon: Search },
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tasks", label: "Tareas y Analisis", icon: CheckSquare },
   { href: "/meetings", label: "Todas las Reuniones", icon: Brain },
@@ -15,7 +16,6 @@ const nav = [
   { href: "/meetings?module=clients", label: "Clientes", icon: Users },
   { href: "/meetings?module=suppliers", label: "Proveedores", icon: Truck },
   { href: "/meetings?module=internal", label: "Internas", icon: Building2 },
-  { href: "/search", label: "Busqueda Semantica", icon: Search },
   { href: "/projects", label: "Proyectos", icon: FolderKanban },
   { href: "/companies", label: "Empresas", icon: Briefcase },
   { href: "/persons", label: "Personas", icon: User },
