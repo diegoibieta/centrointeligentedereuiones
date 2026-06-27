@@ -10,8 +10,24 @@ import {
 } from "@/lib/utils";
 import {
   ArrowLeft, Calendar, Clock, Building2, User, FolderKanban,
-  RefreshCw, Trash2, Globe,
+  RefreshCw, Trash2, Globe, XCircle, RotateCcw,
 } from "lucide-react";
+
+const PROGRESS: Record<string, number> = {
+  pending: 5,
+  transcribing: 45,
+  analyzing: 80,
+  completed: 100,
+  error: 0,
+};
+
+const PROGRESS_LABEL: Record<string, string> = {
+  pending: "En cola...",
+  transcribing: "Transcribiendo audio...",
+  analyzing: "Analizando con Claude...",
+  completed: "Completado",
+  error: "Error",
+};
 
 export default function MeetingDetail() {
   const { id } = useParams<{ id: string }>();
@@ -41,6 +57,17 @@ export default function MeetingDetail() {
     if (!confirm("Eliminar esta reunion?")) return;
     await meetingsApi.delete(id);
     router.push("/meetings");
+  };
+
+  const handleCancel = async () => {
+    if (!confirm("Cancelar el procesamiento de esta reunion?")) return;
+    await meetingsApi.cancel(id);
+    load();
+  };
+
+  const handleRetry = async () => {
+    await meetingsApi.retry(id);
+    load();
   };
 
   if (loading) return <div className="p-8 text-center text-gray-400">Cargando...</div>;
@@ -118,18 +145,51 @@ export default function MeetingDetail() {
         </div>
       )}
 
-      {isProcessing && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-blue-700 text-sm flex items-center gap-2">
-          <RefreshCw className="w-4 h-4 animate-spin" />
-          {meeting.status === "transcribing" ? "Transcribiendo audio..." :
-           meeting.status === "analyzing" ? "Analizando con Claude..." :
-           "En cola para procesamiento..."}
-        </div>
-      )}
+      {(isProcessing || meeting.status === "error") && (
+        <div className={`rounded-xl p-4 mb-6 text-sm border ${
+          meeting.status === "error"
+            ? "bg-red-50 border-red-200 text-red-700"
+            : "bg-blue-50 border-blue-200 text-blue-700"
+        }`}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              {isProcessing && <RefreshCw className="w-4 h-4 animate-spin" />}
+              <span className="font-medium">{PROGRESS_LABEL[meeting.status]}</span>
+            </div>
+            <div className="flex gap-2">
+              {isProcessing && (
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                >
+                  <XCircle className="w-3 h-3" /> Cancelar
+                </button>
+              )}
+              {meeting.status === "error" && (
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" /> Reintentar
+                </button>
+              )}
+            </div>
+          </div>
 
-      {meeting.status === "error" && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm">
-          Error: {meeting.error_message}
+          {isProcessing && (
+            <div className="w-full bg-blue-100 rounded-full h-2">
+              <div
+                className="bg-blue-500 h-2 rounded-full transition-all duration-1000"
+                style={{ width: `${PROGRESS[meeting.status]}%` }}
+              />
+            </div>
+          )}
+
+          {meeting.status === "error" && meeting.error_message && (
+            <p className="text-xs mt-1 text-red-500">{meeting.error_message}</p>
+          )}
         </div>
       )}
 
@@ -155,7 +215,7 @@ export default function MeetingDetail() {
             )}
             {tab === "acuerdos" && (
               (meeting.agreements?.length ?? 0) === 0
-                ? <p className="text-sm text-gray-400 italic">No se determinó la existencia de acuerdos en esta reunión.</p>
+                ? <p className="text-sm text-gray-400 italic">No se determino la existencia de acuerdos en esta reunion.</p>
                 : <ul className="space-y-3">
                     {meeting.agreements!.map((a, i) => (
                       <li key={i} className="text-sm border-l-2 border-green-400 pl-3">
@@ -173,7 +233,7 @@ export default function MeetingDetail() {
             )}
             {tab === "tareas" && (
               (meeting.tasks?.length ?? 0) === 0
-                ? <p className="text-sm text-gray-400 italic">No se determinó la existencia de tareas en esta reunión.</p>
+                ? <p className="text-sm text-gray-400 italic">No se determino la existencia de tareas en esta reunion.</p>
                 : <ul className="space-y-3">
                     {meeting.tasks!.map((t, i) => (
                       <li key={i} className="text-sm border-l-2 border-blue-400 pl-3">
@@ -189,7 +249,7 @@ export default function MeetingDetail() {
             )}
             {tab === "riesgos" && (
               (meeting.risks?.length ?? 0) === 0
-                ? <p className="text-sm text-gray-400 italic">No se determinó la existencia de riesgos en esta reunión.</p>
+                ? <p className="text-sm text-gray-400 italic">No se determino la existencia de riesgos en esta reunion.</p>
                 : <ul className="space-y-3">
                     {meeting.risks!.map((r, i) => (
                       <li key={i} className="text-sm border-l-2 border-red-400 pl-3">
@@ -205,7 +265,7 @@ export default function MeetingDetail() {
             )}
             {tab === "oportunidades" && (
               (meeting.opportunities?.length ?? 0) === 0
-                ? <p className="text-sm text-gray-400 italic">No se determinó la existencia de oportunidades en esta reunión.</p>
+                ? <p className="text-sm text-gray-400 italic">No se determino la existencia de oportunidades en esta reunion.</p>
                 : <ul className="space-y-3">
                     {meeting.opportunities!.map((o, i) => (
                       <li key={i} className="text-sm border-l-2 border-yellow-400 pl-3">

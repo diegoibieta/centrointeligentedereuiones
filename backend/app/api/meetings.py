@@ -56,7 +56,7 @@ async def upload_meeting(
 ):
     ext = os.path.splitext(audio.filename or "")[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(400, f"Formato no soportado.")
+        raise HTTPException(400, f"Formato no soportado. Usa audio ({', '.join(AUDIO_EXTENSIONS)}) o transcripcion ({', '.join(TRANSCRIPT_EXTENSIONS)})")
 
     max_bytes = settings.max_upload_mb * 1024 * 1024
     meeting_id = str(uuid.uuid4())
@@ -104,46 +104,6 @@ async def upload_meeting(
 
     process_meeting_task.delay(meeting_id)
 
-    return meeting
-
-
-@router.put("/{meeting_id}", response_model=MeetingOut)
-async def update_meeting(
-    meeting_id: str,
-    title: str = Form(...),
-    date: str = Form(...),
-    module: MeetingModule = Form(...),
-    project_id: str | None = Form(None),
-    company_id: str | None = Form(None),
-    person_id: str | None = Form(None),
-    tag_ids: str = Form(""),
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(
-        select(Meeting).options(
-            selectinload(Meeting.project),
-            selectinload(Meeting.company),
-            selectinload(Meeting.person),
-            selectinload(Meeting.tags),
-        ).where(Meeting.id == meeting_id)
-    )
-    meeting = result.scalar_one_or_none()
-    if not meeting:
-        raise HTTPException(404, "Reunion no encontrada")
-    meeting.title = title
-    meeting.date = datetime.fromisoformat(date)
-    meeting.module = module
-    meeting.project_id = project_id or None
-    meeting.company_id = company_id or None
-    meeting.person_id = person_id or None
-    tag_id_list = [t.strip() for t in tag_ids.split(",") if t.strip()]
-    if tag_id_list:
-        tag_result = await db.execute(select(Tag).where(Tag.id.in_(tag_id_list)))
-        meeting.tags = list(tag_result.scalars().all())
-    else:
-        meeting.tags = []
-    await db.flush()
-    await db.refresh(meeting, ["project", "company", "person", "tags"])
     return meeting
 
 
@@ -269,6 +229,74 @@ async def get_meeting(meeting_id: str, db: AsyncSession = Depends(get_db)):
     if not meeting:
         raise HTTPException(404, "Reunion no encontrada")
     return meeting
+
+
+@router.put("/{meeting_id}", response_model=MeetingOut)
+async def update_meeting(
+    meeting_id: str,
+    title: str = Form(...),
+    date: str = Form(...),
+    module: MeetingModule = Form(...),
+    project_id: str | None = Form(None),
+    company_id: str | None = Form(None),
+    person_id: str | None = Form(None),
+    tag_ids: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Meeting).options(
+            selectinload(Meeting.project),
+            selectinload(Meeting.company),
+            selectinload(Meeting.person),
+            selectinload(Meeting.tags),
+        ).where(Meeting.id == meeting_id)
+    )
+    meeting = result.scalar_one_or_none()
+    if not meeting:
+        raise HTTPException(404, "Reunion no encontrada")
+    meeting.title = title
+    meeting.date = datetime.fromisoformat(date)
+    meeting.module = module
+    meeting.project_id = project_id or None
+    meeting.company_id = company_id or None
+    meeting.person_id = person_id or None
+    tag_id_list = [t.strip() for t in tag_ids.split(",") if t.strip()]
+    if tag_id_list:
+        tag_result = await db.execute(select(Tag).where(Tag.id.in_(tag_id_list)))
+        meeting.tags = list(tag_result.scalars().all())
+    else:
+        meeting.tags = []
+    await db.flush()
+    await db.refresh(meeting, ["project", "company", "person", "tags"])
+    return meeting
+
+
+@router.post("/{meeting_id}/cancel")
+async def cancel_meeting(meeting_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Meeting).where(Meeting.id == meeting_id))
+    meeting = result.scalar_one_or_none()
+    if not meeting:
+        raise HTTPException(404, "Reunion no encontrada")
+    if meeting.status not in [MeetingStatus.pending, MeetingStatus.transcribing, MeetingStatus.analyzing]:
+        raise HTTPException(400, "Solo se puede cancelar una reunion en proceso")
+    meeting.status = MeetingStatus.error
+    meeting.error_message = "Cancelado manualmente"
+    return {"ok": True}
+
+
+@router.post("/{meeting_id}/retry")
+async def retry_meeting(meeting_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Meeting).where(Meeting.id == meeting_id))
+    meeting = result.scalar_one_or_none()
+    if not meeting:
+        raise HTTPException(404, "Reunion no encontrada")
+    if meeting.status != MeetingStatus.error:
+        raise HTTPException(400, "Solo se puede reintentar una reunion con error")
+    meeting.status = MeetingStatus.pending
+    meeting.error_message = None
+    await db.flush()
+    process_meeting_task.delay(meeting_id)
+    return {"ok": True}
 
 
 @router.delete("/{meeting_id}")

@@ -51,7 +51,6 @@ export interface Meeting extends MeetingListItem {
   risks?: Array<{ description: string; impact?: string; probability?: string; mitigation?: string }>;
   opportunities?: Array<{ description: string; potential?: string; action?: string }>;
   error_message?: string;
-  created_at: string;
 }
 
 export const meetingsApi = {
@@ -65,6 +64,8 @@ export const meetingsApi = {
   update: (id: string, form: FormData) => api.put<Meeting>(`/meetings/${id}`, form, {
     headers: { "Content-Type": "multipart/form-data" },
   }),
+  cancel: (id: string) => api.post(`/meetings/${id}/cancel`),
+  retry: (id: string) => api.post(`/meetings/${id}/retry`),
   delete: (id: string) => api.delete(`/meetings/${id}`),
 };
 
@@ -95,5 +96,6 @@ export const personsApi = {
 
 export const tagsApi = {
   list: () => api.get<Tag[]>("/tags/"),
-  create: (data: { name: string; color?: string }) => api.post<Tag>("/tags/", data),
+  create: (data: { name: string; color: string }) => api.post<Tag>("/tags/", data),
+  delete: (id: string) => api.delete(`/tags/${id}`),
 };
