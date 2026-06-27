@@ -1,25 +1,14 @@
 ﻿"use client";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Suspense, useState } from "react";
 import {
-  Brain, Users, Briefcase, Truck, Building2, Search,
-  FolderKanban, LayoutDashboard, CheckSquare, Plus,
+  Brain, Users, Truck, Building2, Search,
+  FolderKanban, LayoutDashboard, CheckSquare,
+  ChevronLeft, ChevronRight, Plus,
 } from "lucide-react";
 import { UploadModal } from "@/components/meetings/UploadModal";
-
-const nav = [
-  { href: "/search", label: "Busqueda Semantica", icon: Search },
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/tasks", label: "Tareas y Analisis", icon: CheckSquare },
-  { href: "/meetings", label: "Todas las Reuniones", icon: Brain },
-  { href: "/meetings?module=investors", label: "Inversionistas", icon: TrendingUp },
-  { href: "/meetings?module=clients", label: "Clientes", icon: Users },
-  { href: "/meetings?module=suppliers", label: "Proveedores", icon: Truck },
-  { href: "/meetings?module=internal", label: "Internas", icon: Building2 },
-  { href: "/comunidades", label: "Comunidades", icon: FolderKanban },
-];
 
 function TrendingUp(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -30,64 +19,120 @@ function TrendingUp(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-function NavLinks() {
+const nav = [
+  { href: "/search", label: "Búsqueda Semántica", icon: Search },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/tasks", label: "Tareas y Análisis", icon: CheckSquare },
+  { href: "/meetings", label: "Todas las Reuniones", icon: Brain },
+  { href: "/meetings?module=investors", label: "Inversionistas", icon: TrendingUp },
+  { href: "/meetings?module=clients", label: "Clientes", icon: Users },
+  { href: "/meetings?module=suppliers", label: "Proveedores", icon: Truck },
+  { href: "/meetings?module=internal", label: "Internas", icon: Building2 },
+  { href: "/comunidades", label: "Comunidades", icon: FolderKanban },
+];
+
+function NavContent({ collapsed }: { collapsed: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentModule = searchParams.get("module");
 
+  const isActive = (href: string) => {
+    const [path, query] = href.split("?");
+    if (path !== pathname) return false;
+    if (!query) return path !== "/meetings" || !currentModule;
+    return new URLSearchParams(query).get("module") === currentModule;
+  };
+
   return (
     <>
-      {nav.map(({ href, label, icon: Icon }) => {
-        const [path, query] = href.split("?");
-        const module = query ? new URLSearchParams(query).get("module") : null;
-        const active = pathname === path && currentModule === module;
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-              active
-                ? "bg-brand-600 text-white"
-                : "text-gray-400 hover:bg-gray-800 hover:text-white"
-            )}
-          >
-            <Icon className="w-4 h-4 shrink-0" />
-            {label}
-          </Link>
-        );
-      })}
+      {nav.map(({ href, label, icon: Icon }) => (
+        <Link
+          key={href}
+          href={href}
+          title={label}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors shrink-0",
+            collapsed ? "justify-center" : "",
+            isActive(href)
+              ? "bg-brand-600 text-white"
+              : "text-gray-400 hover:bg-gray-800 hover:text-white"
+          )}
+        >
+          <Icon className="w-4 h-4 shrink-0" />
+          {!collapsed && <span className="truncate">{label}</span>}
+        </Link>
+      ))}
     </>
   );
 }
 
 export function Sidebar() {
+  const [collapsed, setCollapsed] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--sidebar-width",
+      collapsed ? "64px" : "256px"
+    );
+  }, [collapsed]);
 
   return (
     <>
-      <aside className="w-64 bg-gray-900 text-gray-100 flex flex-col min-h-screen">
-        <div className="p-5 border-b border-gray-700">
-          <div className="flex items-center gap-2">
-            <Brain className="text-brand-500 w-6 h-6" />
-            <span className="font-bold text-sm leading-tight">Centro de Inteligencia<br />de Reuniones</span>
-          </div>
-        </div>
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          <Suspense>
-            <NavLinks />
-          </Suspense>
-        </nav>
-        <div className="p-3 border-t border-gray-700">
+      <aside
+        className={cn(
+          "fixed top-0 left-0 h-screen bg-gray-900 text-gray-100 flex flex-col z-40 transition-all duration-200",
+          collapsed ? "w-16" : "w-64"
+        )}
+      >
+        <div className={cn(
+          "flex items-center border-b border-gray-700 shrink-0 h-14",
+          collapsed ? "justify-center px-2" : "px-4 gap-2"
+        )}>
+          <Brain className="text-brand-500 w-5 h-5 shrink-0" />
+          {!collapsed && (
+            <span className="font-bold text-xs leading-tight flex-1 truncate">
+              Centro de Inteligencia<br />de Reuniones
+            </span>
+          )}
           <button
-            onClick={() => setShowUpload(true)}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm font-medium transition-colors"
+            type="button"
+            onClick={() => setCollapsed(c => !c)}
+            title={collapsed ? "Expandir sidebar" : "Colapsar sidebar"}
+            className="text-gray-400 hover:text-white transition-colors rounded p-0.5 shrink-0"
           >
-            <Plus className="w-4 h-4" />Nueva Reunion
+            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-2 space-y-0.5 min-h-0">
+          <Suspense>
+            <NavContent collapsed={collapsed} />
+          </Suspense>
+        </div>
+
+        <div className={cn(
+          "shrink-0 p-2 border-t border-gray-700",
+          collapsed ? "flex justify-center" : ""
+        )}>
+          <button
+            type="button"
+            onClick={() => setShowUpload(true)}
+            title="Nueva Reunión"
+            className={cn(
+              "flex items-center gap-2 rounded-lg text-sm bg-brand-600 hover:bg-brand-700 text-white transition-colors font-medium",
+              collapsed ? "justify-center w-10 h-10" : "w-full px-3 py-2"
+            )}
+          >
+            <Plus className="w-4 h-4 shrink-0" />
+            {!collapsed && <span>Nueva Reunión</span>}
           </button>
         </div>
       </aside>
-      {showUpload && <UploadModal onClose={() => setShowUpload(false)} onSuccess={() => {}} />}
+
+      {showUpload && (
+        <UploadModal onClose={() => setShowUpload(false)} onSuccess={() => setShowUpload(false)} />
+      )}
     </>
   );
 }
