@@ -47,7 +47,7 @@ export interface Meeting extends MeetingListItem {
   transcript_original?: string;
   transcript_spanish?: string;
   agreements?: Array<{ description: string; responsible?: string; deadline?: string }>;
-  tasks?: Array<{ description: string; responsible?: string; priority?: string; deadline?: string }>;
+  tasks?: Array<{ description: string; responsible?: string; priority?: string; deadline?: string; completed?: boolean }>;
   risks?: Array<{ description: string; impact?: string; probability?: string; mitigation?: string }>;
   opportunities?: Array<{ description: string; potential?: string; action?: string }>;
   error_message?: string;
