@@ -162,6 +162,8 @@ export default function MeetingDetail() {
   const [editRisks, setEditRisks] = useState<Risk[]>([]);
   const [editOpportunities, setEditOpportunities] = useState<Opportunity[]>([]);
   const [showEditContext, setShowEditContext] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
 
   const load = () => {
     meetingsApi.get(id).then(r => { setMeeting(r.data); setLoading(false); });
@@ -205,9 +207,14 @@ export default function MeetingDetail() {
   };
 
   const handleDelete = async () => {
-    if (!confirm("Eliminar esta reunion?")) return;
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
     await meetingsApi.delete(id);
-    router.push("/meetings");
+    setShowDeleteConfirm(false);
+    setDeleteSuccess(true);
+    setTimeout(() => router.push("/meetings"), 1500);
   };
 
   const handleCancel = async () => {
@@ -280,6 +287,27 @@ export default function MeetingDetail() {
         </div>
       </div>
       {showEditContext && <EditContextModal meeting={meeting} onClose={() => setShowEditContext(false)} onSaved={load} />}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">¿Eliminar reunión?</h2>
+            <p className="text-sm text-gray-500 mb-6">Esta acción no se puede deshacer.</p>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50">Cancelar</button>
+              <button type="button" onClick={confirmDelete}
+                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700">Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteSuccess && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+          <div className="bg-green-600 text-white px-6 py-3 rounded-xl shadow-xl text-sm font-medium">
+            Reunión eliminada exitosamente
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 text-sm">
         <div className="flex items-center gap-2 text-gray-600">
