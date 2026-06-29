@@ -1,7 +1,7 @@
 ﻿"use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { meetingsApi, Meeting } from "@/lib/api";
+import { meetingsApi, projectsApi, companiesApi, personsApi, tagsApi, Meeting, Project, Company, Person, Tag } from "@/lib/api";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import {
@@ -10,8 +10,129 @@ import {
 } from "@/lib/utils";
 import {
   ArrowLeft, Calendar, Clock, Building2, User, FolderKanban,
-  RefreshCw, Trash2, Globe, XCircle, RotateCcw, Pencil, Check, X, Plus,
+  RefreshCw, Trash2, Globe, XCircle, RotateCcw, Pencil, Check, X, Plus, Loader2,
 } from "lucide-react";
+
+function EditContextModal({ meeting, onClose, onSaved }: { meeting: Meeting; onClose: () => void; onSaved: () => void }) {
+  const [title, setTitle] = useState(meeting.title);
+  const [date, setDate] = useState(meeting.date.slice(0, 16));
+  const [module, setModule] = useState(meeting.module);
+  const [companyId, setCompanyId] = useState(meeting.company?.id || "");
+  const [projectId, setProjectId] = useState(meeting.project?.id || "");
+  const [personId, setPersonId] = useState(meeting.person?.id || "");
+  const [selectedTags, setSelectedTags] = useState<string[]>(meeting.tags.map(t => t.id));
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [persons, setPersons] = useState<Person[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    Promise.all([projectsApi.list(), companiesApi.list(), personsApi.list(), tagsApi.list()])
+      .then(([p, c, pe, t]) => {
+        setProjects(p.data); setCompanies(c.data); setPersons(pe.data); setTags(t.data);
+      });
+  }, []);
+
+  const filteredProjects = companyId ? projects.filter(p => p.company_id === companyId) : projects;
+  const filteredPersons = projectId
+    ? (projects.find(p => p.id === projectId)?.persons || []).map(x => persons.find(pe => pe.id === x.id)).filter(Boolean) as Person[]
+    : companyId ? persons.filter(pe => pe.company_id === companyId) : persons;
+
+  const handleSave = async () => {
+    setSaving(true);
+    const form = new FormData();
+    form.append("title", title);
+    form.append("date", date);
+    form.append("module", module);
+    if (projectId) form.append("project_id", projectId);
+    if (companyId) form.append("company_id", companyId);
+    if (personId) form.append("person_id", personId);
+    form.append("tag_ids", selectedTags.join(","));
+    await meetingsApi.update(meeting.id, form);
+    setSaving(false);
+    onSaved();
+    onClose();
+  };
+
+  const sel = "w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500";
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b">
+          <h2 className="text-lg font-semibold">Editar contexto</h2>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Título *</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} className={sel} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha *</label>
+              <input type="datetime-local" value={date} onChange={e => setDate(e.target.value)} className={sel} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Módulo *</label>
+              <select value={module} onChange={e => setModule(e.target.value as typeof module)} className={sel}>
+                <option value="investors">Inversionistas</option>
+                <option value="clients">Clientes</option>
+                <option value="suppliers">Proveedores</option>
+                <option value="internal">Reunion Interna</option>
+              </select>
+            </div>
+          </div>
+          <div className="space-y-3 bg-gray-50 rounded-xl p-3">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Contexto</p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
+              <select value={companyId} onChange={e => { setCompanyId(e.target.value); setProjectId(""); setPersonId(""); }} className={sel}>
+                <option value="">Sin empresa</option>
+                {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Proyecto</label>
+              <select value={projectId} onChange={e => { setProjectId(e.target.value); setPersonId(""); }} className={sel}>
+                <option value="">Sin proyecto</option>
+                {filteredProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Persona</label>
+              <select value={personId} onChange={e => setPersonId(e.target.value)} className={sel}>
+                <option value="">Sin persona</option>
+                {filteredPersons.map(p => <option key={p.id} value={p.id}>{p.name}{p.role ? ` — ${p.role}` : ""}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Etiquetas</label>
+            <div className="flex flex-wrap gap-2">
+              {tags.map(t => (
+                <button key={t.id} type="button"
+                  onClick={() => setSelectedTags(prev => prev.includes(t.id) ? prev.filter(x => x !== t.id) : [...prev, t.id])}
+                  className={`px-2 py-0.5 rounded-full text-xs text-white transition-opacity ${selectedTags.includes(t.id) ? "opacity-100 ring-2 ring-offset-1 ring-gray-400" : "opacity-50"}`}
+                  style={{ backgroundColor: t.color }}>
+                  {t.name}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50">Cancelar</button>
+            <button type="button" onClick={handleSave} disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50">
+              {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Guardando...</> : <><Check className="w-4 h-4" />Guardar</>}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const PROGRESS: Record<string, number> = {
   pending: 5, transcribing: 45, analyzing: 80, completed: 100, error: 0,
@@ -40,6 +161,7 @@ export default function MeetingDetail() {
   const [editTasks, setEditTasks] = useState<Task[]>([]);
   const [editRisks, setEditRisks] = useState<Risk[]>([]);
   const [editOpportunities, setEditOpportunities] = useState<Opportunity[]>([]);
+  const [showEditContext, setShowEditContext] = useState(false);
 
   const load = () => {
     meetingsApi.get(id).then(r => { setMeeting(r.data); setLoading(false); });
@@ -103,7 +225,6 @@ export default function MeetingDetail() {
   if (!meeting) return <div className="p-8 text-center text-gray-400">Reunion no encontrada.</div>;
 
   const isProcessing = ["pending", "transcribing", "analyzing"].includes(meeting.status);
-  const isEditing = editing === tab;
 
   const tabs = meeting.status === "completed" ? [
     { key: "resumen", label: "Resumen" },
@@ -114,14 +235,15 @@ export default function MeetingDetail() {
   ] : [];
 
   const inputCls = "w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500";
+  const isEditing = editing === tab;
 
-  const EditBar = () => (
+  const EditBar = ({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) => (
     <div className="flex gap-2 mt-4 justify-end">
-      <button type="button" onClick={cancelEdit}
+      <button type="button" onClick={onCancel}
         className="flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50">
         <X className="w-3.5 h-3.5" /> Cancelar
       </button>
-      <button type="button" onClick={saveEdit} disabled={saving}
+      <button type="button" onClick={onSave} disabled={saving}
         className="flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50">
         <Check className="w-3.5 h-3.5" /> {saving ? "Guardando..." : "Guardar"}
       </button>
@@ -150,8 +272,14 @@ export default function MeetingDetail() {
             )}
           </div>
         </div>
-        <Button variant="danger" size="sm" onClick={handleDelete}><Trash2 className="w-4 h-4" /></Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setShowEditContext(true)} title="Editar contexto">
+            <Pencil className="w-4 h-4" />
+          </Button>
+          <Button variant="danger" size="sm" onClick={handleDelete}><Trash2 className="w-4 h-4" /></Button>
+        </div>
       </div>
+      {showEditContext && <EditContextModal meeting={meeting} onClose={() => setShowEditContext(false)} onSaved={load} />}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 text-sm">
         <div className="flex items-center gap-2 text-gray-600">
@@ -234,7 +362,8 @@ export default function MeetingDetail() {
                 onClick={() => { setTab(t.key); setEditing(null); }}
                 className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors -mb-px ${
                   tab === t.key ? "border-brand-600 text-brand-600" : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}>
+                }`}
+              >
                 {t.label}
               </button>
             ))}
@@ -244,7 +373,7 @@ export default function MeetingDetail() {
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-medium text-gray-500">
                 {tab === "resumen" && "Resumen ejecutivo"}
-                {tab === "acuerdos" && "Acuerdos de la reunion"}
+                {tab === "acuerdos" && "Acuerdos de la reunión"}
                 {tab === "tareas" && "Tareas identificadas"}
                 {tab === "riesgos" && "Riesgos identificados"}
                 {tab === "oportunidades" && "Oportunidades identificadas"}
@@ -260,9 +389,8 @@ export default function MeetingDetail() {
             {tab === "resumen" && (
               isEditing
                 ? <>
-                    <textarea value={editSummary} onChange={e => setEditSummary(e.target.value)}
-                      rows={8} className={inputCls} />
-                    <EditBar />
+                    <textarea value={editSummary} onChange={e => setEditSummary(e.target.value)} rows={8} className={inputCls} />
+                    <EditBar onSave={saveEdit} onCancel={cancelEdit} />
                   </>
                 : <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{meeting.summary}</p>
             )}
@@ -273,19 +401,19 @@ export default function MeetingDetail() {
                     <div className="space-y-3">
                       {editAgreements.map((a, i) => (
                         <div key={i} className="border rounded-lg p-3 space-y-2 bg-gray-50">
-                          <div className="flex items-center">
-                            <span className="text-xs font-semibold text-gray-500">Acuerdo {i + 1}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-gray-500 w-20 shrink-0">Acuerdo {i + 1}</span>
                             <button type="button" onClick={() => setEditAgreements(editAgreements.filter((_, j) => j !== i))}
                               className="ml-auto text-red-400 hover:text-red-600"><X className="w-3.5 h-3.5" /></button>
                           </div>
-                          <textarea value={a.description} rows={2} placeholder="Descripcion"
+                          <textarea value={a.description} rows={2} placeholder="Descripción"
                             onChange={e => { const n = [...editAgreements]; n[i].description = e.target.value; setEditAgreements(n); }}
                             className={inputCls} />
                           <div className="grid grid-cols-2 gap-2">
                             <input value={a.responsible || ""} placeholder="Responsable"
                               onChange={e => { const n = [...editAgreements]; n[i].responsible = e.target.value; setEditAgreements(n); }}
                               className={inputCls} />
-                            <input value={a.deadline || ""} placeholder="Fecha limite"
+                            <input value={a.deadline || ""} placeholder="Fecha límite"
                               onChange={e => { const n = [...editAgreements]; n[i].deadline = e.target.value; setEditAgreements(n); }}
                               className={inputCls} />
                           </div>
@@ -296,10 +424,10 @@ export default function MeetingDetail() {
                       className="mt-3 flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700">
                       <Plus className="w-4 h-4" /> Adicionar otro acuerdo
                     </button>
-                    <EditBar />
+                    <EditBar onSave={saveEdit} onCancel={cancelEdit} />
                   </>
                 : (meeting.agreements?.length ?? 0) === 0
-                  ? <p className="text-sm text-gray-400 italic">No se determino la existencia de acuerdos en esta reunion.</p>
+                  ? <p className="text-sm text-gray-400 italic">No se determinó la existencia de acuerdos en esta reunión.</p>
                   : <ul className="space-y-3">
                       {meeting.agreements!.map((a, i) => (
                         <li key={i} className="text-sm border-l-2 border-green-400 pl-3">
@@ -323,12 +451,12 @@ export default function MeetingDetail() {
                     <div className="space-y-3">
                       {editTasks.map((t, i) => (
                         <div key={i} className="border rounded-lg p-3 space-y-2 bg-gray-50">
-                          <div className="flex items-center">
-                            <span className="text-xs font-semibold text-gray-500">Tarea {i + 1}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-gray-500 w-20 shrink-0">Tarea {i + 1}</span>
                             <button type="button" onClick={() => setEditTasks(editTasks.filter((_, j) => j !== i))}
                               className="ml-auto text-red-400 hover:text-red-600"><X className="w-3.5 h-3.5" /></button>
                           </div>
-                          <textarea value={t.description} rows={2} placeholder="Descripcion"
+                          <textarea value={t.description} rows={2} placeholder="Descripción"
                             onChange={e => { const n = [...editTasks]; n[i].description = e.target.value; setEditTasks(n); }}
                             className={inputCls} />
                           <div className="grid grid-cols-3 gap-2">
@@ -342,7 +470,7 @@ export default function MeetingDetail() {
                               <option value="media">Media</option>
                               <option value="baja">Baja</option>
                             </select>
-                            <input value={t.deadline || ""} placeholder="Fecha limite"
+                            <input value={t.deadline || ""} placeholder="Fecha límite"
                               onChange={e => { const n = [...editTasks]; n[i].deadline = e.target.value; setEditTasks(n); }}
                               className={inputCls} />
                           </div>
@@ -353,10 +481,10 @@ export default function MeetingDetail() {
                       className="mt-3 flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700">
                       <Plus className="w-4 h-4" /> Adicionar otra tarea
                     </button>
-                    <EditBar />
+                    <EditBar onSave={saveEdit} onCancel={cancelEdit} />
                   </>
                 : (meeting.tasks?.length ?? 0) === 0
-                  ? <p className="text-sm text-gray-400 italic">No se determino la existencia de tareas en esta reunion.</p>
+                  ? <p className="text-sm text-gray-400 italic">No se determinó la existencia de tareas en esta reunión.</p>
                   : <ul className="space-y-3">
                       {meeting.tasks!.map((t, i) => (
                         <li key={i} className="text-sm border-l-2 border-blue-400 pl-3">
@@ -378,12 +506,12 @@ export default function MeetingDetail() {
                     <div className="space-y-3">
                       {editRisks.map((r, i) => (
                         <div key={i} className="border rounded-lg p-3 space-y-2 bg-gray-50">
-                          <div className="flex items-center">
-                            <span className="text-xs font-semibold text-gray-500">Riesgo {i + 1}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-gray-500 w-20 shrink-0">Riesgo {i + 1}</span>
                             <button type="button" onClick={() => setEditRisks(editRisks.filter((_, j) => j !== i))}
                               className="ml-auto text-red-400 hover:text-red-600"><X className="w-3.5 h-3.5" /></button>
                           </div>
-                          <textarea value={r.description} rows={2} placeholder="Descripcion"
+                          <textarea value={r.description} rows={2} placeholder="Descripción"
                             onChange={e => { const n = [...editRisks]; n[i].description = e.target.value; setEditRisks(n); }}
                             className={inputCls} />
                           <div className="grid grid-cols-3 gap-2">
@@ -401,7 +529,7 @@ export default function MeetingDetail() {
                               <option value="media">Media</option>
                               <option value="baja">Baja</option>
                             </select>
-                            <input value={r.mitigation || ""} placeholder="Mitigacion"
+                            <input value={r.mitigation || ""} placeholder="Mitigación"
                               onChange={e => { const n = [...editRisks]; n[i].mitigation = e.target.value; setEditRisks(n); }}
                               className={inputCls} />
                           </div>
@@ -412,10 +540,10 @@ export default function MeetingDetail() {
                       className="mt-3 flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700">
                       <Plus className="w-4 h-4" /> Adicionar otro riesgo
                     </button>
-                    <EditBar />
+                    <EditBar onSave={saveEdit} onCancel={cancelEdit} />
                   </>
                 : (meeting.risks?.length ?? 0) === 0
-                  ? <p className="text-sm text-gray-400 italic">No se determino la existencia de riesgos en esta reunion.</p>
+                  ? <p className="text-sm text-gray-400 italic">No se determinó la existencia de riesgos en esta reunión.</p>
                   : <ul className="space-y-3">
                       {meeting.risks!.map((r, i) => (
                         <li key={i} className="text-sm border-l-2 border-red-400 pl-3">
@@ -425,7 +553,7 @@ export default function MeetingDetail() {
                             {r.impact && `Impacto: ${r.impact}`}
                             {r.probability && ` · Probabilidad: ${r.probability}`}
                           </p>
-                          {r.mitigation && <p className="text-xs text-gray-500 mt-0.5">Mitigacion: {r.mitigation}</p>}
+                          {r.mitigation && <p className="text-xs text-gray-500 mt-0.5">Mitigación: {r.mitigation}</p>}
                         </li>
                       ))}
                     </ul>
@@ -437,12 +565,12 @@ export default function MeetingDetail() {
                     <div className="space-y-3">
                       {editOpportunities.map((o, i) => (
                         <div key={i} className="border rounded-lg p-3 space-y-2 bg-gray-50">
-                          <div className="flex items-center">
-                            <span className="text-xs font-semibold text-gray-500">Oportunidad {i + 1}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-gray-500 w-24 shrink-0">Oportunidad {i + 1}</span>
                             <button type="button" onClick={() => setEditOpportunities(editOpportunities.filter((_, j) => j !== i))}
                               className="ml-auto text-red-400 hover:text-red-600"><X className="w-3.5 h-3.5" /></button>
                           </div>
-                          <textarea value={o.description} rows={2} placeholder="Descripcion"
+                          <textarea value={o.description} rows={2} placeholder="Descripción"
                             onChange={e => { const n = [...editOpportunities]; n[i].description = e.target.value; setEditOpportunities(n); }}
                             className={inputCls} />
                           <div className="grid grid-cols-2 gap-2">
@@ -453,7 +581,7 @@ export default function MeetingDetail() {
                               <option value="medio">Medio</option>
                               <option value="bajo">Bajo</option>
                             </select>
-                            <input value={o.action || ""} placeholder="Accion recomendada"
+                            <input value={o.action || ""} placeholder="Acción recomendada"
                               onChange={e => { const n = [...editOpportunities]; n[i].action = e.target.value; setEditOpportunities(n); }}
                               className={inputCls} />
                           </div>
@@ -464,16 +592,16 @@ export default function MeetingDetail() {
                       className="mt-3 flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700">
                       <Plus className="w-4 h-4" /> Adicionar otra oportunidad
                     </button>
-                    <EditBar />
+                    <EditBar onSave={saveEdit} onCancel={cancelEdit} />
                   </>
                 : (meeting.opportunities?.length ?? 0) === 0
-                  ? <p className="text-sm text-gray-400 italic">No se determino la existencia de oportunidades en esta reunion.</p>
+                  ? <p className="text-sm text-gray-400 italic">No se determinó la existencia de oportunidades en esta reunión.</p>
                   : <ul className="space-y-3">
                       {meeting.opportunities!.map((o, i) => (
                         <li key={i} className="text-sm border-l-2 border-yellow-400 pl-3">
                           <p className="text-xs font-semibold text-gray-400 mb-0.5">Oportunidad {i + 1}</p>
                           <p className="text-gray-800">{o.description}</p>
-                          {o.action && <p className="text-xs text-gray-500 mt-0.5">Accion: {o.action}</p>}
+                          {o.action && <p className="text-xs text-gray-500 mt-0.5">Acción: {o.action}</p>}
                         </li>
                       ))}
                     </ul>
