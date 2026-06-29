@@ -10,7 +10,7 @@ import {
 } from "@/lib/utils";
 import {
   ArrowLeft, Calendar, Clock, Building2, User, FolderKanban,
-  RefreshCw, Trash2, Globe, XCircle, RotateCcw, Pencil, Check, X, Plus, Loader2,
+  RefreshCw, Trash2, Globe, XCircle, RotateCcw, Pencil, Check, X, Plus, Loader2, Square, CheckSquare,
 } from "lucide-react";
 
 function EditContextModal({ meeting, onClose, onSaved }: { meeting: Meeting; onClose: () => void; onSaved: () => void }) {
@@ -143,7 +143,7 @@ const PROGRESS_LABEL: Record<string, string> = {
 };
 
 type Agreement = { description: string; responsible?: string; deadline?: string };
-type Task = { description: string; responsible?: string; priority?: string; deadline?: string };
+type Task = { description: string; responsible?: string; priority?: string; deadline?: string; completed?: boolean };
 type Risk = { description: string; impact?: string; probability?: string; mitigation?: string };
 type Opportunity = { description: string; potential?: string; action?: string };
 
@@ -226,6 +226,15 @@ export default function MeetingDetail() {
   const handleRetry = async () => {
     await meetingsApi.retry(id);
     load();
+  };
+
+  const toggleTaskComplete = async (taskIndex: number) => {
+    if (!meeting || !meeting.tasks) return;
+    const updatedTasks = meeting.tasks.map((t, i) =>
+      i === taskIndex ? { ...t, completed: !t.completed } : t
+    );
+    setMeeting({ ...meeting, tasks: updatedTasks });
+    await meetingsApi.updateAnalysis(id, { tasks: updatedTasks });
   };
 
   if (loading) return <div className="p-8 text-center text-gray-400">Cargando...</div>;
@@ -414,6 +423,14 @@ export default function MeetingDetail() {
               )}
             </div>
 
+            {tab === "tareas" && !isEditing && meeting.tasks && meeting.tasks.length > 0 && (
+              <div className="flex gap-3 text-xs mb-3">
+                <span className="text-gray-400">{meeting.tasks.length} totales</span>
+                <span className="text-blue-500">{meeting.tasks.filter(t => !t.completed).length} en proceso</span>
+                <span className="text-green-500">{meeting.tasks.filter(t => t.completed).length} terminadas</span>
+              </div>
+            )}
+
             {tab === "resumen" && (
               isEditing
                 ? <>
@@ -513,16 +530,23 @@ export default function MeetingDetail() {
                   </>
                 : (meeting.tasks?.length ?? 0) === 0
                   ? <p className="text-sm text-gray-400 italic">No se determinó la existencia de tareas en esta reunión.</p>
-                  : <ul className="space-y-3">
+                  : <ul className="space-y-2">
                       {meeting.tasks!.map((t, i) => (
-                        <li key={i} className="text-sm border-l-2 border-blue-400 pl-3">
-                          <p className="text-xs font-semibold text-gray-400 mb-0.5">Tarea {i + 1}</p>
-                          <p className="text-gray-800">{t.description}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {t.priority && <span className={`font-medium ${PRIORITY_COLORS[t.priority] || ""}`}>Prioridad: {t.priority}</span>}
-                            {t.responsible && ` · Responsable: ${t.responsible}`}
-                            {t.deadline && ` · Fecha: ${t.deadline}`}
-                          </p>
+                        <li key={i} className={`text-sm border-l-2 pl-3 flex gap-3 items-start py-1 ${t.completed ? "border-green-400 opacity-60" : "border-blue-400"}`}>
+                          <button type="button" onClick={() => toggleTaskComplete(i)} className="mt-0.5 shrink-0">
+                            {t.completed
+                              ? <CheckSquare className="w-4 h-4 text-green-500" />
+                              : <Square className="w-4 h-4 text-gray-300 hover:text-blue-400 transition-colors" />}
+                          </button>
+                          <div className="flex-1">
+                            <p className="text-xs font-semibold text-gray-400 mb-0.5">Tarea {i + 1}</p>
+                            <p className={`text-gray-800 ${t.completed ? "line-through text-gray-400" : ""}`}>{t.description}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {t.priority && <span className={`font-medium ${PRIORITY_COLORS[t.priority] || ""}`}>Prioridad: {t.priority}</span>}
+                              {t.responsible && ` · Responsable: ${t.responsible}`}
+                              {t.deadline && ` · Fecha: ${t.deadline}`}
+                            </p>
+                          </div>
                         </li>
                       ))}
                     </ul>
