@@ -64,6 +64,7 @@ export const meetingsApi = {
   update: (id: string, form: FormData) => api.put<Meeting>(`/meetings/${id}`, form, {
     headers: { "Content-Type": "multipart/form-data" },
   }),
+  updateAnalysis: (id: string, body: object) => api.patch(`/meetings/${id}/analysis`, body),
   cancel: (id: string) => api.post(`/meetings/${id}/cancel`),
   retry: (id: string) => api.post(`/meetings/${id}/retry`),
   delete: (id: string) => api.delete(`/meetings/${id}`),

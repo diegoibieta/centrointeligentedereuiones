@@ -3,7 +3,7 @@ import uuid
 import aiofiles
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from datetime import datetime
 
@@ -11,7 +11,7 @@ from ..core.database import get_db
 from ..core.config import get_settings
 from ..models.meeting import Meeting, MeetingStatus, MeetingModule
 from ..models.tag import Tag
-from ..schemas.meeting import MeetingCreate, MeetingOut, MeetingListOut
+from ..schemas.meeting import MeetingOut, MeetingListOut
 from ..tasks.process_meeting import process_meeting_task
 from ..services.claude_service import semantic_search_query, answer_question
 
@@ -56,7 +56,7 @@ async def upload_meeting(
 ):
     ext = os.path.splitext(audio.filename or "")[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(400, f"Formato no soportado. Usa audio ({', '.join(AUDIO_EXTENSIONS)}) o transcripcion ({', '.join(TRANSCRIPT_EXTENSIONS)})")
+        raise HTTPException(400, f"Formato no soportado.")
 
     max_bytes = settings.max_upload_mb * 1024 * 1024
     meeting_id = str(uuid.uuid4())
@@ -101,17 +101,12 @@ async def upload_meeting(
     db.add(meeting)
     await db.flush()
     await db.refresh(meeting, ["project", "company", "person", "tags"])
-
     process_meeting_task.delay(meeting_id)
-
     return meeting
 
 
 @router.post("/ask")
-async def ask_meetings(
-    body: dict,
-    db: AsyncSession = Depends(get_db),
-):
+async def ask_meetings(body: dict, db: AsyncSession = Depends(get_db)):
     question = body.get("question", "").strip()
     if not question:
         raise HTTPException(400, "Pregunta vacia")
@@ -124,11 +119,7 @@ async def ask_meetings(
         ).where(Meeting.status == MeetingStatus.completed)
     )
     all_meetings = result.scalars().all()
-
-    meeting_dicts = [
-        {"id": m.id, "title": m.title, "summary": m.summary}
-        for m in all_meetings
-    ]
+    meeting_dicts = [{"id": m.id, "title": m.title, "summary": m.summary} for m in all_meetings]
     ranked_ids = semantic_search_query(question, meeting_dicts)
     id_to_meeting = {m.id: m for m in all_meetings}
     relevant = [id_to_meeting[mid] for mid in ranked_ids[:5] if mid in id_to_meeting]
@@ -136,28 +127,17 @@ async def ask_meetings(
     context = []
     for m in relevant:
         ctx = f"REUNION: {m.title} ({m.date.strftime('%d/%m/%Y')})"
-        if m.company:
-            ctx += f" | Empresa: {m.company.name}"
-        if m.person:
-            ctx += f" | Persona: {m.person.name}"
-        if m.summary:
-            ctx += f"\nResumen: {m.summary}"
-        if m.agreements:
-            ctx += "\nAcuerdos: " + "; ".join(a.get("description", "") for a in m.agreements)
-        if m.tasks:
-            ctx += "\nTareas: " + "; ".join(t.get("description", "") for t in m.tasks)
-        if m.risks:
-            ctx += "\nRiesgos: " + "; ".join(r.get("description", "") for r in m.risks)
-        if m.opportunities:
-            ctx += "\nOportunidades: " + "; ".join(o.get("description", "") for o in m.opportunities)
+        if m.company: ctx += f" | Empresa: {m.company.name}"
+        if m.person: ctx += f" | Persona: {m.person.name}"
+        if m.summary: ctx += f"\nResumen: {m.summary}"
+        if m.agreements: ctx += "\nAcuerdos: " + "; ".join(a.get("description", "") for a in m.agreements)
+        if m.tasks: ctx += "\nTareas: " + "; ".join(t.get("description", "") for t in m.tasks)
+        if m.risks: ctx += "\nRiesgos: " + "; ".join(r.get("description", "") for r in m.risks)
+        if m.opportunities: ctx += "\nOportunidades: " + "; ".join(o.get("description", "") for o in m.opportunities)
         context.append(ctx)
 
     answer = answer_question(question, context)
-
-    sources = [
-        {"id": m.id, "title": m.title, "date": m.date.isoformat()}
-        for m in relevant
-    ]
+    sources = [{"id": m.id, "title": m.title, "date": m.date.isoformat()} for m in relevant]
     return {"answer": answer, "sources": sources}
 
 
@@ -170,47 +150,28 @@ async def list_meetings(
     db: AsyncSession = Depends(get_db),
 ):
     q = select(Meeting).options(
-        selectinload(Meeting.project),
-        selectinload(Meeting.company),
-        selectinload(Meeting.person),
-        selectinload(Meeting.tags),
+        selectinload(Meeting.project), selectinload(Meeting.company),
+        selectinload(Meeting.person), selectinload(Meeting.tags),
     ).order_by(Meeting.date.desc())
-
-    if module:
-        q = q.where(Meeting.module == module)
-    if project_id:
-        q = q.where(Meeting.project_id == project_id)
-    if company_id:
-        q = q.where(Meeting.company_id == company_id)
-    if status:
-        q = q.where(Meeting.status == status)
-
+    if module: q = q.where(Meeting.module == module)
+    if project_id: q = q.where(Meeting.project_id == project_id)
+    if company_id: q = q.where(Meeting.company_id == company_id)
+    if status: q = q.where(Meeting.status == status)
     result = await db.execute(q)
     return result.scalars().all()
 
 
 @router.get("/search", response_model=list[MeetingListOut])
-async def search_meetings(
-    q: str = Query(..., min_length=2),
-    db: AsyncSession = Depends(get_db),
-):
+async def search_meetings(q: str = Query(..., min_length=2), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Meeting).options(
-            selectinload(Meeting.project),
-            selectinload(Meeting.company),
-            selectinload(Meeting.person),
-            selectinload(Meeting.tags),
+            selectinload(Meeting.project), selectinload(Meeting.company),
+            selectinload(Meeting.person), selectinload(Meeting.tags),
         ).where(Meeting.status == MeetingStatus.completed)
     )
     all_meetings = result.scalars().all()
-
-    meeting_dicts = [
-        {"id": m.id, "title": m.title, "summary": m.summary}
-        for m in all_meetings
-    ]
-
+    meeting_dicts = [{"id": m.id, "title": m.title, "summary": m.summary} for m in all_meetings]
     ranked_ids = semantic_search_query(q, meeting_dicts)
-
     id_to_meeting = {m.id: m for m in all_meetings}
     return [id_to_meeting[mid] for mid in ranked_ids if mid in id_to_meeting]
 
@@ -219,10 +180,8 @@ async def search_meetings(
 async def get_meeting(meeting_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Meeting).options(
-            selectinload(Meeting.project),
-            selectinload(Meeting.company),
-            selectinload(Meeting.person),
-            selectinload(Meeting.tags),
+            selectinload(Meeting.project), selectinload(Meeting.company),
+            selectinload(Meeting.person), selectinload(Meeting.tags),
         ).where(Meeting.id == meeting_id)
     )
     meeting = result.scalar_one_or_none()
@@ -245,10 +204,8 @@ async def update_meeting(
 ):
     result = await db.execute(
         select(Meeting).options(
-            selectinload(Meeting.project),
-            selectinload(Meeting.company),
-            selectinload(Meeting.person),
-            selectinload(Meeting.tags),
+            selectinload(Meeting.project), selectinload(Meeting.company),
+            selectinload(Meeting.person), selectinload(Meeting.tags),
         ).where(Meeting.id == meeting_id)
     )
     meeting = result.scalar_one_or_none()
@@ -269,6 +226,21 @@ async def update_meeting(
     await db.flush()
     await db.refresh(meeting, ["project", "company", "person", "tags"])
     return meeting
+
+
+@router.patch("/{meeting_id}/analysis")
+async def update_analysis(meeting_id: str, body: dict, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Meeting).where(Meeting.id == meeting_id))
+    meeting = result.scalar_one_or_none()
+    if not meeting:
+        raise HTTPException(404, "Reunion no encontrada")
+    if "summary" in body: meeting.summary = body["summary"]
+    if "agreements" in body: meeting.agreements = body["agreements"]
+    if "tasks" in body: meeting.tasks = body["tasks"]
+    if "risks" in body: meeting.risks = body["risks"]
+    if "opportunities" in body: meeting.opportunities = body["opportunities"]
+    await db.flush()
+    return {"ok": True}
 
 
 @router.post("/{meeting_id}/cancel")
