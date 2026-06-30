@@ -302,11 +302,11 @@ export default function SchedulingPage() {
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Calendar className="w-6 h-6 text-brand-400" />
             Agenda / Google Calendar
           </h1>
-          <p className="text-sm text-gray-400 mt-1">Próximos eventos del calendario</p>
+          <p className="text-sm text-gray-500 mt-1">Próximos eventos del calendario</p>
         </div>
         <div className="flex items-center gap-2">
           <button
