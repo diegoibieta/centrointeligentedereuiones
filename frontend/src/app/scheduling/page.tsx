@@ -6,8 +6,6 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Calendar, Plus, Trash2, ExternalLink, Video, RefreshCw, X } from "lucide-react";
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-
 function fmtDate(iso: string) {
   try {
     return format(parseISO(iso), "d MMM yyyy HH:mm", { locale: es });
@@ -15,8 +13,6 @@ function fmtDate(iso: string) {
     return iso;
   }
 }
-
-// ── Create-event modal ────────────────────────────────────────────────────────
 
 function CreateEventModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [form, setForm] = useState<CalendarEventCreateInput>({
@@ -195,8 +191,6 @@ function CreateEventModal({ onClose, onCreated }: { onClose: () => void; onCreat
   );
 }
 
-// ── Event card ────────────────────────────────────────────────────────────────
-
 function EventCard({ event, onDeleted }: { event: CalendarEvent; onDeleted: () => void }) {
   const [deleting, setDeleting] = useState(false);
 
@@ -240,7 +234,7 @@ function EventCard({ event, onDeleted }: { event: CalendarEvent; onDeleted: () =
         </div>
       </div>
 
-      <p className="text-xs text-brand-400">
+      <p className="text-xs text-white font-medium">
         {fmtDate(event.start)}
         {event.end && ` → ${fmtDate(event.end)}`}
       </p>
@@ -274,8 +268,6 @@ function EventCard({ event, onDeleted }: { event: CalendarEvent; onDeleted: () =
     </div>
   );
 }
-
-// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SchedulingPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
