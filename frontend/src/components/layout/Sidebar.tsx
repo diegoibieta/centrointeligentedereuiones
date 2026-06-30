@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   Brain, Users, Truck, Building2, Search,
   FolderKanban, LayoutDashboard, CheckSquare,
-  ChevronLeft, ChevronRight, Plus,
+  ChevronLeft, ChevronRight, Plus, CalendarDays,
 } from "lucide-react";
 import { UploadModal } from "@/components/meetings/UploadModal";
 
@@ -29,6 +29,7 @@ const nav = [
   { href: "/meetings?module=suppliers", label: "Proveedores", icon: Truck },
   { href: "/meetings?module=internal", label: "Internas", icon: Building2 },
   { href: "/comunidades", label: "Comunidades", icon: FolderKanban },
+  { href: "/scheduling", label: "Agenda / Calendar", icon: CalendarDays },
 ];
 
 function NavContent({ collapsed }: { collapsed: boolean }) {

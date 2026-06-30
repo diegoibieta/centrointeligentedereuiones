@@ -100,3 +100,60 @@ export const tagsApi = {
   create: (data: { name: string; color: string }) => api.post<Tag>("/tags/", data),
   delete: (id: string) => api.delete(`/tags/${id}`),
 };
+
+export interface CalendarEventAttendee {
+  email: string;
+  name?: string;
+  status?: string;
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  location?: string;
+  start: string;
+  end: string;
+  meet_link?: string;
+  attendees: CalendarEventAttendee[];
+  html_link?: string;
+  status?: string;
+  created?: string;
+  updated?: string;
+}
+
+export interface CalendarEventCreateInput {
+  title: string;
+  start: string;
+  duration_minutes?: number;
+  description?: string;
+  attendees?: string[];
+  location?: string;
+  add_meet_link?: boolean;
+}
+
+export interface CalendarEventUpdateInput {
+  title?: string;
+  start?: string;
+  duration_minutes?: number;
+  description?: string;
+  attendees?: string[];
+  location?: string;
+}
+
+export const schedulingApi = {
+  listEvents: (params?: { max_results?: number; time_min?: string; time_max?: string; query?: string }) =>
+    api.get<CalendarEvent[]>("/scheduling/calendar/events", { params }),
+  getEvent: (eventId: string) => api.get<CalendarEvent>(`/scheduling/calendar/events/${eventId}`),
+  createEvent: (data: CalendarEventCreateInput) =>
+    api.post<CalendarEvent>("/scheduling/calendar/events", data),
+  updateEvent: (eventId: string, data: CalendarEventUpdateInput) =>
+    api.patch<CalendarEvent>(`/scheduling/calendar/events/${eventId}`, data),
+  deleteEvent: (eventId: string) => api.delete(`/scheduling/calendar/events/${eventId}`),
+  syncMeetingToCalendar: (
+    meetingId: string,
+    data: { duration_minutes?: number; attendees?: string[]; add_meet_link?: boolean }
+  ) => api.post<{ meeting_id: string; calendar_event: CalendarEvent }>(
+    `/scheduling/meetings/${meetingId}/sync-calendar`, data
+  ),
+};

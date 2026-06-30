@@ -1,6 +1,6 @@
 ﻿from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .api import meetings, projects, companies, persons, tags
+from .api import meetings, projects, companies, persons, tags, scheduling
 from .core.database import engine, Base
 
 app = FastAPI(
@@ -22,6 +22,7 @@ app.include_router(projects.router, prefix="/api/v1")
 app.include_router(companies.router, prefix="/api/v1")
 app.include_router(persons.router, prefix="/api/v1")
 app.include_router(tags.router, prefix="/api/v1")
+app.include_router(scheduling.router, prefix="/api/v1")
 
 
 @app.on_event("startup")

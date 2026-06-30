@@ -8,6 +8,12 @@ class Settings(BaseSettings):
     upload_dir: str = "/data/uploads"
     whisper_model: str = "base"
     max_upload_mb: int = 500
+    # Google Calendar integration (optional)
+    google_service_account_file: str = ""
+    google_service_account_json: str = ""
+    google_token_file: str = "token.json"
+    google_credentials_file: str = "credentials.json"
+    google_calendar_id: str = "primary"
     class Config:
         env_file = ".env"
 @lru_cache
