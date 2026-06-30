@@ -1,5 +1,4 @@
-﻿version: "3.9"
-services:
+﻿services:
   db:
     image: pgvector/pgvector:pg16
     environment:
@@ -36,11 +35,13 @@ services:
       UPLOAD_DIR: /data/uploads
       WHISPER_MODEL: ${WHISPER_MODEL:-base}
       GOOGLE_CREDENTIALS_FILE: /app/credentials.json
+      GOOGLE_TOKEN_FILE: /app/token.json
       GOOGLE_CALENDAR_ID: ${GOOGLE_CALENDAR_ID:-primary}
     volumes:
       - uploads:/data/uploads
       - whisper_models:/root/.cache/huggingface
       - ./backend/credentials.json:/app/credentials.json:ro
+      - ./backend/token.json:/app/token.json:rw
     ports:
       - "8000:8000"
     depends_on:
@@ -61,11 +62,13 @@ services:
       UPLOAD_DIR: /data/uploads
       WHISPER_MODEL: ${WHISPER_MODEL:-base}
       GOOGLE_CREDENTIALS_FILE: /app/credentials.json
+      GOOGLE_TOKEN_FILE: /app/token.json
       GOOGLE_CALENDAR_ID: ${GOOGLE_CALENDAR_ID:-primary}
     volumes:
       - uploads:/data/uploads
       - whisper_models:/root/.cache/huggingface
       - ./backend/credentials.json:/app/credentials.json:ro
+      - ./backend/token.json:/app/token.json:rw
     depends_on:
       db:
         condition: service_healthy
