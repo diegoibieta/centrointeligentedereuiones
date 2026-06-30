@@ -1,6 +1,7 @@
 ﻿"use client";
 import { useState, Suspense } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -83,7 +84,9 @@ export function Sidebar() {
           "flex items-center border-b border-gray-700 shrink-0 h-14",
           collapsed ? "justify-center px-2" : "px-4 gap-2"
         )}>
-          <Brain className="text-brand-500 w-5 h-5 shrink-0" />
+          <Link href="/" title="Dashboard" className="shrink-0">
+  <Image src="/logo.png" alt="Logo" width={32} height={32} className="rounded-full" />
+</Link>
           {!collapsed && (
             <span className="font-bold text-xs leading-tight flex-1 min-w-0 truncate">
               Centro de Inteligencia<br />de Reuniones
