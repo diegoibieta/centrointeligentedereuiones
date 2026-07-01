@@ -70,7 +70,7 @@ export default function TasksPage() {
 
   useEffect(() => {
     Promise.all([
-      meetingsApi.list({ status: "completed" }),
+      meetingsApi.list({ status: "completed", page_size: 200 }),
       companiesApi.list(),
       projectsApi.list(),
     ]).then(async ([mList, cList, pList]) => {

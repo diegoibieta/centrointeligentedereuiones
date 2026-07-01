@@ -53,8 +53,8 @@ function MeetingsContent() {
     }).catch(() => setLoading(false));
   };
 
-  useEffect(() => { setPage(1); load(1); }, [module]);
-  useEffect(() => { load(page); }, [page]);
+useEffect(() => { setPage(1); load(1); }, [module]);
+useEffect(() => { if (page !== 1) load(page); }, [page]);
 
   useEffect(() => {
     const pending = meetings.some(m => ["pending", "transcribing", "analyzing"].includes(m.status));
@@ -138,7 +138,7 @@ function MeetingsContent() {
             <label className="text-xs text-gray-500 mb-1 block">Empresa</label>
             <select
               value={filterCompany}
-              onChange={e => setFilterCompany(e.target.value)}
+              onChange={e => { setFilterCompany(e.target.value); setFilterProject(""); }}
               className="w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
               <option value="">Todas</option>
