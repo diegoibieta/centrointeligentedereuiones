@@ -105,6 +105,62 @@ async def upload_meeting(
     return meeting
 
 
+@router.post("/upload-from-drive", response_model=MeetingOut)
+async def upload_meeting_from_drive(
+    title: str = Form(...),
+    date: str = Form(...),
+    module: MeetingModule = Form(...),
+    drive_file_id: str = Form(...),
+    filename: str = Form(...),
+    project_id: str | None = Form(None),
+    company_id: str | None = Form(None),
+    person_id: str | None = Form(None),
+    db: AsyncSession = Depends(get_db),
+):
+    from ..services.google_drive_service import download_from_drive
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(400, f"Formato no soportado.")
+
+    try:
+        tmp_path = download_from_drive(drive_file_id, filename)
+    except Exception as e:
+        raise HTTPException(502, f"Error descargando desde Drive: {e}")
+
+    meeting_id = str(uuid.uuid4())
+    os.makedirs(settings.upload_dir, exist_ok=True)
+    file_path = os.path.join(settings.upload_dir, f"{meeting_id}{ext}")
+    import shutil
+    shutil.move(tmp_path, file_path)
+
+    is_transcript = ext in TRANSCRIPT_EXTENSIONS
+    pre_transcript = None
+    if is_transcript:
+        pre_transcript = extract_text_from_file(file_path, ext)
+
+    meeting = Meeting(
+        id=meeting_id,
+        title=title,
+        date=datetime.fromisoformat(date),
+        module=module,
+        project_id=project_id or None,
+        company_id=company_id or None,
+        person_id=person_id or None,
+        audio_path=file_path if not is_transcript else None,
+        transcript_original=pre_transcript,
+        transcript_spanish=pre_transcript,
+        original_language="es",
+        status=MeetingStatus.pending,
+    )
+
+    db.add(meeting)
+    await db.flush()
+    await db.refresh(meeting, ["project", "company", "person", "tags"])
+    process_meeting_task.delay(meeting_id)
+    return meeting
+
+
+
 @router.post("/ask")
 async def ask_meetings(body: dict, db: AsyncSession = Depends(get_db)):
     question = body.get("question", "").strip()
