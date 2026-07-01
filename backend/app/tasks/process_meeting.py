@@ -16,7 +16,7 @@ def _get_session():
 
 
 @celery_app.task(bind=True, max_retries=3)
-def process_meeting_task(self, meeting_id: str):
+def process_meeting_task(self, meeting_id: str, chat_id: str | None = None):
     session = _get_session()
     try:
         meeting = session.query(Meeting).filter(Meeting.id == meeting_id).first()
