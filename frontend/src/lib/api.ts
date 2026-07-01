@@ -27,7 +27,6 @@ export interface Person {
   projects: { id: string; name: string }[];
   created_at: string;
 }
-
 export interface MeetingListItem {
   id: string;
   title: string;
@@ -39,9 +38,9 @@ export interface MeetingListItem {
   project?: { id: string; name: string };
   company?: { id: string; name: string };
   person?: { id: string; name: string; role?: string };
+  persons: { id: string; name: string; role?: string }[];
   tags: Tag[];
 }
-
 export interface Meeting extends MeetingListItem {
   original_language?: string;
   transcript_original?: string;

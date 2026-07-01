@@ -1,11 +1,19 @@
 ﻿import uuid
 import enum
-from sqlalchemy import String, Text, ForeignKey, DateTime, Enum, JSON, Float
+from sqlalchemy import String, Text, ForeignKey, DateTime, Enum, JSON, Float, Table, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from pgvector.sqlalchemy import Vector
 from ..core.database import Base
 from .tag import meeting_tags
+
+meeting_persons = Table(
+    "meeting_persons",
+    Base.metadata,
+    Column("meeting_id", String(36), ForeignKey("meetings.id"), primary_key=True),
+    Column("person_id", String(36), ForeignKey("persons.id"), primary_key=True),
+)
+
 class MeetingStatus(str, enum.Enum):
     pending = "pending"
     transcribing = "transcribing"
@@ -43,5 +51,6 @@ class Meeting(Base):
     error_message: Mapped[str | None] = mapped_column(Text)
     project: Mapped["Project | None"] = relationship("Project", back_populates="meetings")
     company: Mapped["Company | None"] = relationship("Company", back_populates="meetings")
-    person: Mapped["Person | None"] = relationship("Person", back_populates="meetings")
+    person: Mapped["Person | None"] = relationship("Person", back_populates="meetings", foreign_keys=[person_id])
+    persons: Mapped[list["Person"]] = relationship("Person", secondary=meeting_persons, back_populates="meeting_list")
     tags: Mapped[list["Tag"]] = relationship("Tag", secondary=meeting_tags, back_populates="meetings")

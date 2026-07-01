@@ -16,5 +16,6 @@ class Person(Base):
     created_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     company: Mapped["Company | None"] = relationship("Company", back_populates="persons")
-    meetings: Mapped[list["Meeting"]] = relationship("Meeting", back_populates="person")
+    meetings: Mapped[list["Meeting"]] = relationship("Meeting", back_populates="person", foreign_keys="Meeting.person_id")
+    meeting_list: Mapped[list["Meeting"]] = relationship("Meeting", secondary="meeting_persons", back_populates="persons")
     projects: Mapped[list["Project"]] = relationship("Project", secondary="project_persons", back_populates="persons")

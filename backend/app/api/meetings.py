@@ -51,7 +51,9 @@ async def upload_meeting(
     project_id: str | None = Form(None),
     company_id: str | None = Form(None),
     person_id: str | None = Form(None),
+    person_ids: str = Form(""),
     tag_ids: str = Form(""),
+    chat_id: str | None = Form(None),
     audio: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ):
@@ -79,6 +81,7 @@ async def upload_meeting(
         pre_transcript = extract_text_from_file(file_path, ext)
 
     tag_id_list = [t.strip() for t in tag_ids.split(",") if t.strip()]
+    person_id_list = [p.strip() for p in person_ids.split(",") if p.strip()]
 
     meeting = Meeting(
         id=meeting_id,
@@ -87,7 +90,7 @@ async def upload_meeting(
         module=module,
         project_id=project_id or None,
         company_id=company_id or None,
-        person_id=person_id or None,
+        person_id=person_id_list[0] if person_id_list else (person_id or None),
         audio_path=file_path if not is_transcript else None,
         transcript_original=pre_transcript,
         transcript_spanish=pre_transcript,
@@ -97,12 +100,17 @@ async def upload_meeting(
 
     if tag_id_list:
         result = await db.execute(select(Tag).where(Tag.id.in_(tag_id_list)))
-        meeting.tags = result.scalars().all()
+        meeting.tags = list(result.scalars().all())
+
+    if person_id_list:
+        from ..models.person import Person as PersonModel
+        p_result = await db.execute(select(PersonModel).where(PersonModel.id.in_(person_id_list)))
+        meeting.persons = list(p_result.scalars().all())
 
     db.add(meeting)
     await db.flush()
-    await db.refresh(meeting, ["project", "company", "person", "tags"])
-    process_meeting_task.delay(meeting_id)
+    await db.refresh(meeting, ["project", "company", "person", "persons", "tags"])
+    process_meeting_task.delay(meeting_id, chat_id)
     return meeting
 
 
@@ -116,6 +124,7 @@ async def upload_meeting_from_drive(
     project_id: str | None = Form(None),
     company_id: str | None = Form(None),
     person_id: str | None = Form(None),
+    chat_id: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     from ..services.google_drive_service import download_from_drive
@@ -128,10 +137,10 @@ async def upload_meeting_from_drive(
     except Exception as e:
         raise HTTPException(502, f"Error descargando desde Drive: {e}")
 
+    import shutil
     meeting_id = str(uuid.uuid4())
     os.makedirs(settings.upload_dir, exist_ok=True)
     file_path = os.path.join(settings.upload_dir, f"{meeting_id}{ext}")
-    import shutil
     shutil.move(tmp_path, file_path)
 
     is_transcript = ext in TRANSCRIPT_EXTENSIONS
@@ -156,10 +165,9 @@ async def upload_meeting_from_drive(
 
     db.add(meeting)
     await db.flush()
-    await db.refresh(meeting, ["project", "company", "person", "tags"])
-    process_meeting_task.delay(meeting_id)
+    await db.refresh(meeting, ["project", "company", "person", "persons", "tags"])
+    process_meeting_task.delay(meeting_id, chat_id)
     return meeting
-
 
 
 @router.post("/ask")
@@ -173,6 +181,7 @@ async def ask_meetings(body: dict, db: AsyncSession = Depends(get_db)):
             selectinload(Meeting.project),
             selectinload(Meeting.company),
             selectinload(Meeting.person),
+            selectinload(Meeting.persons),
         ).where(Meeting.status == MeetingStatus.completed)
     )
     all_meetings = result.scalars().all()
@@ -185,10 +194,19 @@ async def ask_meetings(body: dict, db: AsyncSession = Depends(get_db)):
     for m in relevant:
         ctx = f"REUNION: {m.title} ({m.date.strftime('%d/%m/%Y')})"
         if m.company: ctx += f" | Empresa: {m.company.name}"
-        if m.person: ctx += f" | Persona: {m.person.name}"
+        if m.persons: ctx += f" | Personas: {', '.join(p.name for p in m.persons)}"
+        elif m.person: ctx += f" | Persona: {m.person.name}"
         if m.summary: ctx += f"\nResumen: {m.summary}"
         if m.agreements: ctx += "\nAcuerdos: " + "; ".join(a.get("description", "") for a in m.agreements)
-        if m.tasks: ctx += "\nTareas: " + "; ".join(t.get("description", "") for t in m.tasks)
+        if m.tasks:
+            task_lines = []
+            for t in m.tasks:
+                tl = t.get("description", "")
+                if t.get("responsible"): tl += f" [Responsable: {t['responsible']}]"
+                if t.get("priority"): tl += f" [Prioridad: {t['priority']}]"
+                if t.get("deadline"): tl += f" [Fecha: {t['deadline']}]"
+                task_lines.append(tl)
+            ctx += "\nTareas: " + "; ".join(task_lines)
         if m.risks: ctx += "\nRiesgos: " + "; ".join(r.get("description", "") for r in m.risks)
         if m.opportunities: ctx += "\nOportunidades: " + "; ".join(o.get("description", "") for o in m.opportunities)
         context.append(ctx)
@@ -219,19 +237,20 @@ async def list_meetings(
 
     q = base.options(
         selectinload(Meeting.project), selectinload(Meeting.company),
-        selectinload(Meeting.person), selectinload(Meeting.tags),
+        selectinload(Meeting.person), selectinload(Meeting.persons), selectinload(Meeting.tags),
     ).order_by(Meeting.date.desc()).offset((page - 1) * page_size).limit(page_size)
 
     result = await db.execute(q)
     items = result.scalars().all()
     return {"items": jsonable_encoder(items), "total": total, "page": page, "page_size": page_size, "pages": -(-total // page_size)}
 
+
 @router.get("/search", response_model=list[MeetingListOut])
 async def search_meetings(q: str = Query(..., min_length=2), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Meeting).options(
             selectinload(Meeting.project), selectinload(Meeting.company),
-            selectinload(Meeting.person), selectinload(Meeting.tags),
+            selectinload(Meeting.person), selectinload(Meeting.persons), selectinload(Meeting.tags),
         ).where(Meeting.status == MeetingStatus.completed)
     )
     all_meetings = result.scalars().all()
@@ -246,7 +265,7 @@ async def get_meeting(meeting_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Meeting).options(
             selectinload(Meeting.project), selectinload(Meeting.company),
-            selectinload(Meeting.person), selectinload(Meeting.tags),
+            selectinload(Meeting.person), selectinload(Meeting.persons), selectinload(Meeting.tags),
         ).where(Meeting.id == meeting_id)
     )
     meeting = result.scalar_one_or_none()
@@ -263,14 +282,14 @@ async def update_meeting(
     module: MeetingModule = Form(...),
     project_id: str | None = Form(None),
     company_id: str | None = Form(None),
-    person_id: str | None = Form(None),
+    person_ids: str = Form(""),
     tag_ids: str = Form(""),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
         select(Meeting).options(
             selectinload(Meeting.project), selectinload(Meeting.company),
-            selectinload(Meeting.person), selectinload(Meeting.tags),
+            selectinload(Meeting.person), selectinload(Meeting.persons), selectinload(Meeting.tags),
         ).where(Meeting.id == meeting_id)
     )
     meeting = result.scalar_one_or_none()
@@ -281,7 +300,17 @@ async def update_meeting(
     meeting.module = module
     meeting.project_id = project_id or None
     meeting.company_id = company_id or None
-    meeting.person_id = person_id or None
+
+    person_id_list = [p.strip() for p in person_ids.split(",") if p.strip()]
+    if person_id_list:
+        from ..models.person import Person as PersonModel
+        p_result = await db.execute(select(PersonModel).where(PersonModel.id.in_(person_id_list)))
+        meeting.persons = list(p_result.scalars().all())
+        meeting.person_id = person_id_list[0]
+    else:
+        meeting.persons = []
+        meeting.person_id = None
+
     tag_id_list = [t.strip() for t in tag_ids.split(",") if t.strip()]
     if tag_id_list:
         tag_result = await db.execute(select(Tag).where(Tag.id.in_(tag_id_list)))
@@ -289,7 +318,7 @@ async def update_meeting(
     else:
         meeting.tags = []
     await db.flush()
-    await db.refresh(meeting, ["project", "company", "person", "tags"])
+    await db.refresh(meeting, ["project", "company", "person", "persons", "tags"])
     return meeting
 
 

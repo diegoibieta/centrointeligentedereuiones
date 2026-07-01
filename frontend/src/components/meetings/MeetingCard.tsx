@@ -44,7 +44,12 @@ export function MeetingCard({ meeting }: { meeting: MeetingListItem }) {
               {meeting.company.name}
             </span>
           )}
-          {meeting.person && (
+          {meeting.persons && meeting.persons.length > 0 ? (
+            <span className="flex items-center gap-1">
+              <User className="w-3 h-3" />
+              {meeting.persons.map(p => p.name).join(", ")}
+            </span>
+          ) : meeting.person && (
             <span className="flex items-center gap-1">
               <User className="w-3 h-3" />
               {meeting.person.name}
