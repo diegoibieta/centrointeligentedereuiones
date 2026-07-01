@@ -1,0 +1,1 @@
+﻿UPDATE meetings SET tasks = (SELECT json_agg(CASE WHEN task->>'responsible' = 'Diego' THEN (task::jsonb || '{"responsible": "Diego Ibieta"}'::jsonb)::json ELSE task END) FROM json_array_elements(tasks) AS task) WHERE tasks IS NOT NULL;

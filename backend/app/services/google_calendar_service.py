@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 def _get_calendar_service():
-    """Build and return a Google Calendar API service client."""
     try:
         from googleapiclient.discovery import build
         from google.oauth2 import service_account
@@ -22,7 +21,19 @@ def _get_calendar_service():
 
     SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
-    # Prefer service account credentials (server-side usage)
+    # Prefer OAuth2 token (personal account) over service account for calendar
+    token_file = os.getenv("GOOGLE_TOKEN_FILE", "token.json")
+
+    if os.path.exists(token_file):
+        creds = Credentials.from_authorized_user_file(token_file, SCOPES)
+        if creds and creds.valid:
+            return build("calendar", "v3", credentials=creds, cache_discovery=False)
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            with open(token_file, "w") as f:
+                f.write(creds.to_json())
+            return build("calendar", "v3", credentials=creds, cache_discovery=False)
+
     service_account_file = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE")
     service_account_info = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
 
@@ -37,33 +48,10 @@ def _get_calendar_service():
         creds = service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
         return build("calendar", "v3", credentials=creds, cache_discovery=False)
 
-    # Fall back to OAuth2 token file (for local/dev usage)
-    token_file = os.getenv("GOOGLE_TOKEN_FILE", "token.json")
-    credentials_file = os.getenv("GOOGLE_CREDENTIALS_FILE", "credentials.json")
-
-    creds = None
-    if os.path.exists(token_file):
-        creds = Credentials.from_authorized_user_file(token_file, SCOPES)
-
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-            with open(token_file, "w") as f:
-                f.write(creds.to_json())
-        elif os.path.exists(credentials_file):
-            from google_auth_oauthlib.flow import InstalledAppFlow
-            flow = InstalledAppFlow.from_client_secrets_file(credentials_file, SCOPES)
-            creds = flow.run_local_server(port=0)
-            with open(token_file, "w") as f:
-                f.write(creds.to_json())
-        else:
-            raise RuntimeError(
-                "No Google credentials found. Set GOOGLE_SERVICE_ACCOUNT_FILE, "
-                "GOOGLE_SERVICE_ACCOUNT_JSON, or provide credentials.json for OAuth2."
-            )
-
-    return build("calendar", "v3", credentials=creds, cache_discovery=False)
-
+    raise RuntimeError(
+        "No Google credentials found. Set GOOGLE_SERVICE_ACCOUNT_FILE, "
+        "GOOGLE_SERVICE_ACCOUNT_JSON, or provide token.json for OAuth2."
+    )
 
 def _calendar_id() -> str:
     return os.getenv("GOOGLE_CALENDAR_ID", "primary")

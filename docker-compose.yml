@@ -37,11 +37,13 @@
       GOOGLE_CREDENTIALS_FILE: /app/credentials.json
       GOOGLE_TOKEN_FILE: /app/token.json
       GOOGLE_CALENDAR_ID: ${GOOGLE_CALENDAR_ID:-primary}
+      GOOGLE_SERVICE_ACCOUNT_FILE: /app/service_account.json
     volumes:
       - uploads:/data/uploads
       - whisper_models:/root/.cache/huggingface
       - ./backend/credentials.json:/app/credentials.json:ro
       - ./backend/token.json:/app/token.json:rw
+      - ./backend/service_account.json:/app/service_account.json:ro
     ports:
       - "8000:8000"
     depends_on:
@@ -64,11 +66,13 @@
       GOOGLE_CREDENTIALS_FILE: /app/credentials.json
       GOOGLE_TOKEN_FILE: /app/token.json
       GOOGLE_CALENDAR_ID: ${GOOGLE_CALENDAR_ID:-primary}
+      GOOGLE_SERVICE_ACCOUNT_FILE: /app/service_account.json
     volumes:
       - uploads:/data/uploads
       - whisper_models:/root/.cache/huggingface
       - ./backend/credentials.json:/app/credentials.json:ro
       - ./backend/token.json:/app/token.json:rw
+      - ./backend/service_account.json:/app/service_account.json:ro
     depends_on:
       db:
         condition: service_healthy

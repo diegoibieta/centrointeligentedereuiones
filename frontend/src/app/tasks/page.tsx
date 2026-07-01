@@ -134,6 +134,20 @@ export default function TasksPage() {
     );
   }, [meetings]);
 
+  const filteredProjects = useMemo(() => {
+    if (!filterCompany) return projects;
+    const company = companies.find(c => c.name === filterCompany);
+    if (!company) return projects;
+    return projects.filter(p => p.company_id === company.id || p.company?.id === company.id);
+  }, [projects, companies, filterCompany]);
+
+  const completedMeetings = useMemo(() => meetings.filter(m => {
+    if (m.status !== "completed") return false;
+    if (filterCompany && m.company?.name !== filterCompany) return false;
+    if (filterProject && m.project?.name !== filterProject) return false;
+    return true;
+  }), [meetings, filterCompany, filterProject]);
+
   const filteredTasks = useMemo(() => {
     return allTasks.filter(t => {
       if (filterCompany && t.companyName !== filterCompany) return false;
@@ -165,7 +179,6 @@ export default function TasksPage() {
     });
   }, [allOpps, filterCompany, filterProject, filterMeeting, filterImpact]);
 
-  const completedMeetings = meetings.filter(m => m.status === "completed");
   const uniqueResponsibles = Array.from(new Set(allTasks.map(t => t.responsible).filter((r): r is string => Boolean(r))));
 
   if (loading) return <div className="p-8 text-center text-gray-400">Cargando...</div>;
@@ -233,16 +246,16 @@ export default function TasksPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           <div>
             <label className="text-xs text-gray-500 mb-1 block">Empresa</label>
-            <select value={filterCompany} onChange={e => setFilterCompany(e.target.value)} className="w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
+            <select value={filterCompany} onChange={e => { setFilterCompany(e.target.value); setFilterProject(""); setFilterMeeting(""); }} className="w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
               <option value="">Todas</option>
               {companies.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
             </select>
           </div>
           <div>
             <label className="text-xs text-gray-500 mb-1 block">Proyecto</label>
-            <select value={filterProject} onChange={e => setFilterProject(e.target.value)} className="w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
+            <select value={filterProject} onChange={e => { setFilterProject(e.target.value); setFilterMeeting(""); }} className="w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
               <option value="">Todos</option>
-              {projects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+              {filteredProjects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
             </select>
           </div>
           <div>
