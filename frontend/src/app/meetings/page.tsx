@@ -1,11 +1,11 @@
 ﻿"use client";
 import { useEffect, useState, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { meetingsApi, companiesApi, MeetingListItem, MeetingModule, Company } from "@/lib/api";
+import { meetingsApi, companiesApi, projectsApi, MeetingListItem, MeetingModule, Company, Project } from "@/lib/api";
 import { MeetingCard } from "@/components/meetings/MeetingCard";
 import { UploadModal } from "@/components/meetings/UploadModal";
 import { Button } from "@/components/ui/Button";
-import { Plus, RefreshCw, Filter, X } from "lucide-react";
+import { Plus, RefreshCw, Filter, X, ChevronLeft, ChevronRight } from "lucide-react";
 
 const MODULE_LABELS: Record<string, string> = {
   investors: "Inversionistas",
@@ -14,48 +14,59 @@ const MODULE_LABELS: Record<string, string> = {
   internal: "Internas",
 };
 
+const PAGE_SIZE = 12;
+
 function MeetingsContent() {
   const searchParams = useSearchParams();
   const module = searchParams.get("module") as MeetingModule | null;
 
   const [meetings, setMeetings] = useState<MeetingListItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [pages, setPages] = useState(1);
+  const [page, setPage] = useState(1);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
 
   const [filterCompany, setFilterCompany] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterProject, setFilterProject] = useState("");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
 
-  const load = () => {
+  const load = (p = page) => {
     setLoading(true);
-    const params: Record<string, string> = {};
+    const params: Record<string, string | number> = { page: p, page_size: PAGE_SIZE };
     if (module) params.module = module;
     Promise.all([
       meetingsApi.list(params),
       companies.length === 0 ? companiesApi.list() : Promise.resolve(null),
-    ]).then(([mRes, cRes]) => {
-      setMeetings(mRes.data);
+      projects.length === 0 ? projectsApi.list() : Promise.resolve(null),
+    ]).then(([mRes, cRes, pRes]) => {
+      setMeetings(mRes.data.items);
+      setTotal(mRes.data.total);
+      setPages(mRes.data.pages);
       if (cRes) setCompanies(cRes.data);
+      if (pRes) setProjects(pRes.data);
       setLoading(false);
     }).catch(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [module]);
+  useEffect(() => { setPage(1); load(1); }, [module]);
+  useEffect(() => { load(page); }, [page]);
 
   useEffect(() => {
     const pending = meetings.some(m => ["pending", "transcribing", "analyzing"].includes(m.status));
     if (!pending) return;
-    const t = setTimeout(load, 5000);
+    const t = setTimeout(() => load(page), 5000);
     return () => clearTimeout(t);
   }, [meetings]);
 
   const filtered = useMemo(() => {
     return meetings.filter(m => {
       if (filterCompany && m.company?.name !== filterCompany) return false;
-      if (filterStatus && m.status !== filterStatus) return false;
+      if (filterProject && m.project?.name !== filterProject) return false;
       if (filterDateFrom && m.date < filterDateFrom) return false;
       if (filterDateTo && m.date > filterDateTo + "T23:59:59") return false;
       if (filterSearch) {
@@ -63,17 +74,18 @@ function MeetingsContent() {
         const inTitle = m.title.toLowerCase().includes(q);
         const inSummary = (m.summary || "").toLowerCase().includes(q);
         const inProject = (m.project?.name || "").toLowerCase().includes(q);
-        if (!inTitle && !inSummary && !inProject) return false;
+        const inPerson = (m.person?.name || "").toLowerCase().includes(q);
+        if (!inTitle && !inSummary && !inProject && !inPerson) return false;
       }
       return true;
     });
-  }, [meetings, filterCompany, filterStatus, filterDateFrom, filterDateTo, filterSearch]);
+  }, [meetings, filterCompany, filterProject, filterDateFrom, filterDateTo, filterSearch]);
 
-  const hasFilters = filterCompany || filterStatus || filterDateFrom || filterDateTo || filterSearch;
+  const hasFilters = filterCompany || filterProject || filterDateFrom || filterDateTo || filterSearch;
 
   function clearFilters() {
     setFilterCompany("");
-    setFilterStatus("");
+    setFilterProject("");
     setFilterDateFrom("");
     setFilterDateTo("");
     setFilterSearch("");
@@ -86,7 +98,7 @@ function MeetingsContent() {
           {module ? MODULE_LABELS[module] ?? module : "Todas las Reuniones"}
         </h1>
         <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={load} title="Actualizar">
+          <Button variant="secondary" size="sm" onClick={() => load(page)} title="Actualizar">
             <RefreshCw className="w-4 h-4" />
           </Button>
           <Button size="sm" onClick={() => setShowUpload(true)}>
@@ -95,6 +107,7 @@ function MeetingsContent() {
         </div>
       </div>
 
+      {/* Filter bar */}
       <div className="bg-white border rounded-xl p-4 mb-5 space-y-3">
         <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
           <Filter className="w-4 h-4" />
@@ -117,7 +130,7 @@ function MeetingsContent() {
               type="text"
               value={filterSearch}
               onChange={e => setFilterSearch(e.target.value)}
-              placeholder="Título, resumen, proyecto…"
+              placeholder="Título, resumen, proyecto, persona…"
               className="w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
@@ -133,21 +146,19 @@ function MeetingsContent() {
             </select>
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Estado</label>
+            <label className="text-xs text-gray-500 mb-1 block">Proyecto</label>
             <select
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
+              value={filterProject}
+              onChange={e => setFilterProject(e.target.value)}
               className="w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
               <option value="">Todos</option>
-              <option value="completed">Completadas</option>
-              <option value="pending">Pendientes</option>
-              <option value="transcribing">Transcribiendo</option>
-              <option value="analyzing">Analizando</option>
-              <option value="error">Error</option>
+              {projects
+  .filter(p => !filterCompany || p.company?.name === filterCompany)
+  .map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 lg:col-span-1">
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Desde</label>
               <input
@@ -170,9 +181,12 @@ function MeetingsContent() {
         </div>
       </div>
 
+      {/* Count */}
       {!loading && (
         <p className="text-xs text-gray-400 mb-3">
-          {filtered.length} de {meetings.length} reuniones
+          {hasFilters
+            ? `${filtered.length} de ${meetings.length} en esta página (${total} total)`
+            : `${total} reuniones · página ${page} de ${pages}`}
         </p>
       )}
 
@@ -205,7 +219,40 @@ function MeetingsContent() {
         </div>
       )}
 
-      {showUpload && <UploadModal onClose={() => setShowUpload(false)} onSuccess={load} />}
+      {/* Pagination */}
+      {!loading && pages > 1 && !hasFilters && (
+        <div className="flex items-center justify-center gap-2 mt-8">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="p-2 rounded-lg border text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          {Array.from({ length: pages }, (_, i) => i + 1).map(p => (
+            <button
+              key={p}
+              onClick={() => setPage(p)}
+              className={`w-8 h-8 rounded-lg text-sm font-medium ${
+                p === page
+                  ? "bg-indigo-600 text-white"
+                  : "border text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+          <button
+            onClick={() => setPage(p => Math.min(pages, p + 1))}
+            disabled={page === pages}
+            className="p-2 rounded-lg border text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {showUpload && <UploadModal onClose={() => setShowUpload(false)} onSuccess={() => load(page)} />}
     </div>
   );
 }

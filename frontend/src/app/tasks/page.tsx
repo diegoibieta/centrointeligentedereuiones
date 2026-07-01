@@ -74,7 +74,7 @@ export default function TasksPage() {
       companiesApi.list(),
       projectsApi.list(),
     ]).then(async ([mList, cList, pList]) => {
-      const details = await Promise.all(mList.data.map(m => meetingsApi.get(m.id).then(r => r.data)));
+      const details = await Promise.all(mList.data.items.map(m => meetingsApi.get(m.id).then(r => r.data)));
       setMeetings(details);
       setCompanies(cList.data);
       setProjects(pList.data);

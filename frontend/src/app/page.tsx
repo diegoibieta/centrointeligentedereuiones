@@ -13,8 +13,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    meetingsApi.list().then(r => {
-      setMeetings(r.data);
+    meetingsApi.list({ page: 1, page_size: 100 }).then(r => {
+      setMeetings(r.data.items);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);

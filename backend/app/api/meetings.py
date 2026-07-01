@@ -2,8 +2,9 @@
 import uuid
 import aiofiles
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from datetime import datetime
 
@@ -197,25 +198,33 @@ async def ask_meetings(body: dict, db: AsyncSession = Depends(get_db)):
     return {"answer": answer, "sources": sources}
 
 
-@router.get("/", response_model=list[MeetingListOut])
+@router.get("/", response_model=dict)
 async def list_meetings(
     module: MeetingModule | None = Query(None),
     project_id: str | None = Query(None),
     company_id: str | None = Query(None),
     status: MeetingStatus | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(12, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    q = select(Meeting).options(
+    base = select(Meeting).where(True)
+    if module: base = base.where(Meeting.module == module)
+    if project_id: base = base.where(Meeting.project_id == project_id)
+    if company_id: base = base.where(Meeting.company_id == company_id)
+    if status: base = base.where(Meeting.status == status)
+
+    count_result = await db.execute(select(func.count()).select_from(base.subquery()))
+    total = count_result.scalar()
+
+    q = base.options(
         selectinload(Meeting.project), selectinload(Meeting.company),
         selectinload(Meeting.person), selectinload(Meeting.tags),
-    ).order_by(Meeting.date.desc())
-    if module: q = q.where(Meeting.module == module)
-    if project_id: q = q.where(Meeting.project_id == project_id)
-    if company_id: q = q.where(Meeting.company_id == company_id)
-    if status: q = q.where(Meeting.status == status)
-    result = await db.execute(q)
-    return result.scalars().all()
+    ).order_by(Meeting.date.desc()).offset((page - 1) * page_size).limit(page_size)
 
+    result = await db.execute(q)
+    items = result.scalars().all()
+    return {"items": jsonable_encoder(items), "total": total, "page": page, "page_size": page_size, "pages": -(-total // page_size)}
 
 @router.get("/search", response_model=list[MeetingListOut])
 async def search_meetings(q: str = Query(..., min_length=2), db: AsyncSession = Depends(get_db)):
@@ -226,7 +235,7 @@ async def search_meetings(q: str = Query(..., min_length=2), db: AsyncSession = 
         ).where(Meeting.status == MeetingStatus.completed)
     )
     all_meetings = result.scalars().all()
-    meeting_dicts = [{"id": m.id, "title": m.title, "summary": m.summary} for m in all_meetings]
+    meeting_dicts = [{"id": m.id, "title": m.title, "summary": m.summary, "person": m.person.name if m.person else ""} for m in all_meetings]
     ranked_ids = semantic_search_query(q, meeting_dicts)
     id_to_meeting = {m.id: m for m in all_meetings}
     return [id_to_meeting[mid] for mid in ranked_ids if mid in id_to_meeting]

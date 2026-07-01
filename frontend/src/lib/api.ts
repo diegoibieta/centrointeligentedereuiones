@@ -53,8 +53,16 @@ export interface Meeting extends MeetingListItem {
   error_message?: string;
 }
 
+export interface MeetingsPage {
+  items: MeetingListItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}
+
 export const meetingsApi = {
-  list: (params?: Record<string, string>) => api.get<MeetingListItem[]>("/meetings/", { params }),
+  list: (params?: Record<string, string | number>) => api.get<MeetingsPage>("/meetings/", { params }),
   get: (id: string) => api.get<Meeting>(`/meetings/${id}`),
   search: (q: string) => api.get<MeetingListItem[]>("/meetings/search", { params: { q } }),
   ask: (question: string) => api.post<{ answer: string; sources: { id: string; title: string; date: string }[] }>("/meetings/ask", { question }),

@@ -44,7 +44,7 @@ def _extract_json(text: str) -> str:
 
 
 def analyze_meeting(transcript: str, title: str, module: str) -> dict:
-    max_transcript_chars = 60_000
+    max_transcript_chars = 90_000
     if len(transcript) > max_transcript_chars:
         transcript = transcript[:max_transcript_chars] + "\n\n[Transcripcion truncada por longitud]"
 
@@ -130,27 +130,39 @@ def semantic_search_query(query: str, transcripts: list[dict]) -> list[dict]:
         return []
 
     items = "\n".join(
-        f"ID:{t['id']} TITULO:{t['title']} RESUMEN:{(t.get('summary') or '')[:300]}"
+        f"ID:{t['id']} TITULO:{t['title']} PERSONA:{(t.get('person') or '')} RESUMEN:{(t.get('summary') or '')[:150]}"
         for t in transcripts[:20]
     )
 
     response = _client().messages.create(
         model=MODEL,
-        max_tokens=1024,
+        max_tokens=512,
         messages=[{
             "role": "user",
             "content": (
-                f"Tienes esta consulta de busqueda: \"{query}\"\n\n"
-                f"Y estas reuniones:\n{items}\n\n"
-                f"Devuelve SOLO un JSON con los IDs de las reuniones mas relevantes ordenadas por relevancia, "
-                f"maximo 10 resultados. Formato: {{\"ids\": [\"id1\", \"id2\", ...]}}"
+                f"Consulta: \"{query}\"\n\n"
+                f"Reuniones:\n{items}\n\n"
+                f"Devuelve SOLO un JSON con los IDs genuinamente relevantes ordenados por relevancia. "
+                f"Si ninguna es relevante, devuelve ids vacio. "
+                f"Formato: {{\"ids\": [\"id1\", \"id2\", ...]}}"
             ),
         }],
     )
 
     raw = response.content[0].text.strip()
+    
     if raw.startswith("```"):
         raw = raw.split("```")[1].lstrip("json").strip().rstrip("```").strip()
+
+    # Extract JSON object if Claude added surrounding text
+    if not raw.startswith("{"):
+        start = raw.find("{")
+        end = raw.rfind("}") + 1
+        if start != -1 and end > start:
+            raw = raw[start:end]
+
+    if not raw:
+        return []
 
     result = json.loads(raw)
     return result.get("ids", [])
