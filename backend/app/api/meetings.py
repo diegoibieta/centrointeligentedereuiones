@@ -223,7 +223,7 @@ async def list_meetings(
     company_id: str | None = Query(None),
     status: MeetingStatus | None = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Query(12, ge=1, le=100),
+    page_size: int = Query(12, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
 ):
     base = select(Meeting).where(True)
